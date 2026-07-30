@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gulfport Slotting — Red Bull</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#15181d; --panel:#1d2128; --panel2:#252a33; --line:#333944;
+  --ink:#e6e9ee; --ink-soft:#8f98a6; --ink-dim:#5f6773;
+  --accent:#f5a623; --accent-dark:#8a5d10; --accent-soft:#3a2c10;
+  --tray:#1d9e75; --fourpk:#7f77dd; --carton:#d85a30; --big:#2d8fb8; --open:#2a2f38;
+  --warn:#e24b4a; --ok:#639922;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:13px/1.45 "Segoe UI",Roboto,system-ui,sans-serif;overflow:hidden}
+button{font-family:inherit}
+
+.topbar{height:46px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 12px;flex-wrap:nowrap;overflow-x:auto}
+.brand{font-weight:700;font-size:14px;letter-spacing:.5px;color:var(--accent);white-space:nowrap}
+.brand small{display:block;font-size:9px;color:var(--ink-dim);letter-spacing:1px;font-weight:400;text-transform:uppercase}
+.tbtn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 11px;font-size:12px;cursor:pointer;white-space:nowrap}
+.tbtn:hover{border-color:var(--accent-dark)}
+.tbtn.primary{background:var(--accent);color:#191c22;border-color:var(--accent);font-weight:700}
+.tbtn.danger{border-color:var(--warn);color:#f0a0a0}
+.tbtn.danger:hover{background:rgba(226,75,74,.14);border-color:var(--warn)}
+.tbtn.ghost{background:transparent}
+.tbtn:disabled{opacity:.4;cursor:not-allowed}
+.modes{display:flex}
+.modes button{padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:1px solid var(--line);background:var(--panel2);color:var(--ink-soft);cursor:pointer}
+.modes button:first-child{border-radius:4px 0 0 4px}
+.modes button:last-child{border-radius:0 4px 4px 0;border-left:none}
+.modes button.on{background:var(--accent);color:#191c22}
+.spacer{flex:1}
+.sync{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-soft);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-dim)}
+.dot.live{background:var(--ok)}
+.dot.err{background:var(--warn)}
+.dot.busy{background:var(--accent)}
+
+.shell{display:flex;height:calc(100% - 46px)}
+.side{width:290px;min-width:290px;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px}
+.main{flex:1;overflow:auto;padding:16px;position:relative}
+h2{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-dim);margin:16px 0 7px;font-weight:700}
+h2:first-child{margin-top:0}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:7px 5px;text-align:center}
+.stat .n{font-size:16px;font-weight:700;line-height:1.1}
+.stat .l{font-size:9px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.stat.wide{grid-column:1/3}
+.stat.bad .n{color:var(--warn)}
+
+.drop{display:block;width:100%;background:var(--panel2);border:1.5px dashed var(--line);border-radius:6px;
+  padding:18px 16px;text-align:center;cursor:pointer;margin-bottom:8px;transition:border-color .15s,background .15s}
+.drop:hover{border-color:var(--accent);background:#2b313b}
+.drop b{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.drop span{display:block;font-size:11px;color:var(--ink-soft);line-height:1.4}
+.drop.done{border-style:solid;border-color:var(--tray);background:rgba(29,158,117,.07)}
+.drop.done b{color:var(--tray)}
+.drop.done b::before{content:"✓ ";}
+.drop.over{border-color:var(--accent);border-style:solid;background:var(--accent-soft)}
+.drop.over b{color:var(--accent)}
+.drop input{display:none}
+#dropveil{position:fixed;inset:0;z-index:800;background:rgba(10,12,16,.86);display:none;
+  align-items:center;justify-content:center;pointer-events:none}
+#dropveil.on{display:flex}
+#dropveil div{border:2px dashed var(--accent);border-radius:10px;padding:34px 52px;text-align:center;background:var(--panel)}
+#dropveil b{display:block;font-size:17px;color:var(--accent);margin-bottom:5px}
+#dropveil span{font-size:12px;color:var(--ink-soft)}
+.divider{display:flex;align-items:center;gap:9px;margin:20px 0 10px;font-size:9px;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--ink-dim);font-weight:700;white-space:nowrap}
+.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+
+.legend{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--ink-soft)}
+.legend div{display:flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:2px;border:1px solid var(--line);flex:none}
+
+.zonelist{display:flex;flex-direction:column;gap:4px}
+.zrow{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:5px 7px;font-size:11px}
+.zrow .grip{color:var(--ink-dim);cursor:grab}
+.zrow .nm{flex:1;font-weight:700}
+.zrow .mini{color:var(--ink-dim);font-size:10px}
+.zrow button{background:none;border:none;color:var(--ink-dim);cursor:pointer;font-size:13px;padding:0 3px}
+.zrow button:hover{color:var(--accent)}
+
+.floor{position:relative;width:100%;min-width:900px;min-height:780px;height:calc(100vh - 108px);
+  background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.region{position:absolute;border:1px dashed var(--line);border-radius:3px;pointer-events:none;
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,.028),rgba(255,255,255,.028) 4px,transparent 4px,transparent 9px);
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:2px;
+  font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-dim);overflow:hidden}
+.region.vert{writing-mode:vertical-rl;text-orientation:mixed}
+.zone{position:absolute;border:2px solid var(--accent-dark);border-radius:3px;background:var(--panel2);
+  display:grid;gap:1px;padding:1px}
+.zlabel{position:absolute;top:-17px;left:-2px;background:var(--accent-dark);color:#f7e6c4;
+  padding:1px 8px;font-size:10px;font-weight:700;border-radius:3px 3px 0 0;letter-spacing:.5px;white-space:nowrap}
+.zlabel .seq{display:inline-block;background:var(--accent);color:#191c22;border-radius:2px;
+  padding:0 4px;margin-right:5px;font-size:9px}
+.zmeta{position:absolute;top:-15px;right:0;font-size:9px;color:var(--ink-dim);white-space:nowrap}
+.cell{border-radius:1px;background:var(--open);position:relative;cursor:pointer;overflow:hidden;
+  font-size:8px;display:flex;align-items:center;justify-content:center;color:#0d1014;
+  font-weight:700;letter-spacing:-.3px;min-height:0}
+.cell .tag{line-height:1}
+.cell .x2{position:absolute;top:0;left:0;background:rgba(0,0,0,.5);color:#fff;
+  font-size:7px;line-height:9px;padding:0 2px;letter-spacing:0}
+.cell .fm{position:absolute;top:0;right:1px;font-size:7px;line-height:9px;opacity:.7}
+.cell.face::after{content:"";position:absolute;top:2px;right:2px;width:5px;height:5px;
+  border-radius:50%;background:#5ee08a;box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+.cell.face .fm{display:none}
+.cell.froze{outline:2px solid #fff;outline-offset:-2px}
+.cell.pinned{outline:1px dashed rgba(255,255,255,.85);outline-offset:-2px}
+.cell.ghost{background:transparent;border:1px dashed;opacity:.42}
+/* Pegged to this item but the stock is gone — free floor, still spoken for. */
+.cell.released{opacity:.2;filter:grayscale(.7)}
+.cell.released::before{content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.22) 3px,rgba(255,255,255,.22) 5px)}
+.cell.partly{opacity:.62}
+.cell.partly::before{content:"";position:absolute;left:0;right:0;bottom:0;height:50%;
+  background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.2) 3px,rgba(255,255,255,.2) 5px)}
+.cell.ghost .tag{opacity:.85}
+.cell[draggable=true]{cursor:grab}
+.cell.lift{opacity:.35}
+.cell.target{outline:2px solid var(--accent);outline-offset:-1px;z-index:5}
+.pathsvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+#gate{position:fixed;inset:0;z-index:2000;background:var(--bg);display:none;align-items:center;justify-content:center}
+#gate.on{display:flex}
+#gate form{width:290px;display:flex;flex-direction:column;gap:9px;text-align:center}
+#gate b{font-size:16px;color:var(--accent);letter-spacing:.5px}
+#gate span{font-size:12px;color:var(--ink-soft);margin-bottom:4px}
+#gate input{text-align:center;letter-spacing:2px;padding:9px}
+#gate em{font-size:11px;color:var(--warn);font-style:normal;min-height:14px}
+body.locked .shell,body.locked .topbar{display:none}
+.cell.split{border-top:2px solid var(--accent)}
+.cell.dim{opacity:.28}
+.cell.hit{outline:2px solid #fff;outline-offset:-2px}
+.cell.pickzone{border-bottom:2px dashed var(--ink-dim)}
+
+.tip{position:fixed;background:#0c0e12;border:1px solid var(--accent-dark);border-radius:4px;padding:7px 9px;font-size:11px;pointer-events:none;z-index:999;display:none;max-width:250px;box-shadow:0 4px 14px rgba(0,0,0,.6)}
+.tip b{color:var(--accent)}
+.tip .r{color:var(--ink-soft)}
+
+.back{position:fixed;inset:0;background:rgba(0,0,0,.68);display:none;align-items:center;justify-content:center;z-index:500;padding:20px}
+.back.on{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:7px;max-width:860px;width:100%;max-height:88vh;overflow-y:auto;padding:18px}
+.modal h3{margin:0 0 14px;font-size:15px;display:flex;align-items:center}
+.modal h3 button{margin-left:auto;background:none;border:none;color:var(--ink-soft);font-size:20px;cursor:pointer;line-height:1}
+label.f{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-dim);margin-bottom:3px}
+input[type=text],input[type=number],select{background:var(--panel2);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:6px 8px;font-size:12px;width:100%;font-family:inherit}
+input:focus,select:focus{outline:none;border-color:var(--accent-dark)}
+.row{display:flex;gap:9px;margin-bottom:10px;flex-wrap:wrap}
+.row>div{flex:1;min-width:110px}
+.note{font-size:11px;color:var(--ink-soft);background:var(--panel2);border-left:2px solid var(--accent-dark);padding:8px 10px;border-radius:0 4px 4px 0;margin-bottom:12px}
+.note code{color:var(--accent);font-size:10px}
+
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{padding:5px 7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{position:sticky;top:0;background:var(--panel2);font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-dim);z-index:2}
+td.l,th.l{text-align:left}
+tbody tr:hover{background:var(--panel2)}
+.pill{display:inline-block;font-size:9px;font-weight:700;border-radius:9px;padding:1px 7px;letter-spacing:.4px}
+.pill.tray{background:rgba(29,158,117,.2);color:#5dcaa5}
+.pill.fourpk{background:rgba(127,119,221,.2);color:#afa9ec}
+.pill.big{background:rgba(45,143,184,.2);color:#87c6e2}
+.pill.carton{background:rgba(216,90,48,.2);color:#f0997b}
+.pill.var{background:rgba(216,90,48,.2);color:#f0997b}
+.pill.no{background:rgba(226,75,74,.2);color:#f09595}
+
+.scroll{max-height:52vh;overflow-y:auto;border:1px solid var(--line);border-radius:5px}
+.tabs{display:flex;gap:0;margin-bottom:13px;border-bottom:1px solid var(--line)}
+.tabs button{background:none;border:none;border-bottom:2px solid transparent;color:var(--ink-soft);padding:7px 13px;font-size:12px;cursor:pointer}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.pane{display:none}
+.pane.on{display:block}
+.empty{color:var(--ink-dim);text-align:center;padding:40px 20px;font-size:13px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent-dark);border-radius:5px;padding:9px 15px;font-size:12px;z-index:900;display:none;box-shadow:0 4px 16px rgba(0,0,0,.6)}
+.logbox{display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-radius:5px;padding:8px 10px;margin-bottom:7px;font-size:11px;border:1px solid var(--line)}
+.logbox b{font-size:11px;min-width:212px}
+.logbox input{width:96px;padding:4px 6px}
+.logbox span{color:var(--ink-dim);flex:1;min-width:200px}
+.logbox.rc{background:rgba(29,158,117,.07);border-color:rgba(29,158,117,.35)}
+.logbox.tr{background:rgba(245,166,35,.07);border-color:var(--accent-dark)}
+.logbox.bk{background:rgba(226,75,74,.07);border-color:rgba(226,75,74,.35)}
+.mv{display:none}
+body.movemode .mv{display:block}
+body.movemode .sv{display:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">GULFPORT SLOTTING<small id="brandsub">Warehouse 6 · Red Bull</small></div>
+  <div class="modes">
+    <button id="m-slot" class="on" onclick="setMode('slot')">Slotting</button>
+    <button id="m-move" onclick="setMode('move')">Move</button>
+  </div>
+  <button class="tbtn" id="pathBtn" onclick="togglePath()">Show pick path</button>
+  <button class="tbtn" id="undoBtn" onclick="undoEdit()" disabled>Undo</button>
+  <button class="tbtn" onclick="openM('data')">Data</button>
+  <button class="tbtn" onclick="openM('setup')">Layout &amp; path</button>
+  <button class="tbtn" onclick="openM('skus')">SKUs</button>
+  <button class="tbtn" onclick="openM('checks')">Checks</button>
+  <button class="tbtn ghost" onclick="clearPins()">Clear hand edits</button>
+  <button class="tbtn ghost" onclick="exportCsv()">Export CSV</button>
+  <div class="spacer"></div>
+  <div class="sync"><span class="dot" id="syncdot"></span><span id="syncmsg">Not connected</span></div>
+  <button class="tbtn ghost" onclick="openM('cloud')">Sync</button>
+</div>
+
+<div class="shell">
+  <div class="side">
+    <h2>Plan</h2>
+    <div class="stats" id="stats"></div>
+
+    <h2>Pick path</h2>
+    <div class="zonelist" id="zonelist"></div>
+
+    <h2>Legend</h2>
+    <div class="legend">
+      <div><span class="sw" style="background:var(--open);position:relative"><span style="position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:#5ee08a"></span></span> Pick face</div>
+      <div><span class="sw" style="background:var(--panel2);font-size:7px;color:#fff;text-align:center;line-height:12px">×2</span> Backstock, 2-high</div>
+      <div><span class="sw" style="background:var(--open)"></span> Open position</div>
+      <div><span class="sw" style="background:var(--tray);opacity:.2;filter:grayscale(.7)"></span> Freed up — sold before the move</div>
+      <div style="margin-top:5px;color:var(--ink-dim);line-height:1.5">Each item gets its own colour. The corner letter is the pack format — <b>T</b>ray, <b>4</b>-pack, <b>C</b>arton, <b>V</b>ariety.</div>
+      <div style="color:var(--ink-dim);line-height:1.5">Click a position to pick that item out across the floor. Drag one onto another of the same item to stack them; onto a different item to swap.</div>
+    </div>
+
+    <h2 class="mv">Move</h2>
+    <div class="mv">
+      <button class="tbtn primary" style="width:100%;margin-bottom:6px" onclick="openM('moveplan')">Open move planner</button>
+      <button class="tbtn ghost" style="width:100%;margin-bottom:6px" onclick="exportNewBuilding()">Export new-building inventory</button>
+      <button class="tbtn ghost" style="width:100%" onclick="openM('log')">Activity log</button>
+      <div style="font-size:10px;color:var(--ink-dim);margin-top:9px;line-height:1.5">
+        Outlined positions are pegged but have not arrived. They fill in as you log product across.
+        The day count moves on its own — the old building is depleted at each item's daily rate whenever the date changes.
+      </div>
+    </div>
+  </div>
+
+  <div class="main" id="main"><div class="empty">Load the two reports to begin — <b>Data</b> in the toolbar.</div></div>
+</div>
+
+<div id="gate">
+  <form id="gateForm" onsubmit="return unlockGate(event)">
+    <b>Gulfport slotting</b>
+    <span>Enter the shared passcode to open the plan.</span>
+    <input type="password" id="gateCode" autocomplete="current-password" placeholder="Passcode" autofocus>
+    <button type="submit" class="tbtn primary">Unlock</button>
+    <em id="gateMsg"></em>
+  </form>
+</div>
+
+<div id="dropveil"><div><b>Drop the sales rate file</b><span>The plan rebuilds as soon as it lands</span></div></div>
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"></div>
+
+<div class="back" id="m-data"><div class="modal">
+  <h3>Reports <button onclick="closeM('data')">×</button></h3>
+  <div class="note">Cases per pallet is already built in, so the daily job is one file — drop in the sales rate export and the plan rebuilds. Anything not in the table is filled from the can size rather than defaulting to one pallet.</div>
+  <label class="drop" id="d-rate"><input type="file" accept=".xlsx,.xls" onchange="readRate(this.files[0])">
+    <b>Sales rate report</b><span id="s-rate">The only file you need day to day</span></label>
+  <div class="divider">Only when pallet quantities change</div>
+  <label class="drop" id="d-cpp"><input type="file" accept=".xlsx,.xls" onchange="readCpp(this.files[0])">
+    <b>EBMG cases/pallet report</b><span id="s-cpp">Replaces the built-in table for everyone</span></label>
+  <div id="dataMsg" style="font-size:11px;color:var(--ink-soft);margin-top:10px"></div>
+
+  <div class="divider">Rarely</div>
+  <div class="note" style="border-left-color:var(--warn)">Dropping a file tops the plan up — items that grew take more positions, items that shrank give some back, and nothing already on the floor moves.<br><br>Re-slotting is different. It throws the layout away and works out a new one from scratch, so every item can end up somewhere else, for everyone on this plan. Worth doing when the range changes seasonally or the aisles are re-configured — not day to day.</div>
+  <button class="tbtn" id="rebuildBtn" onclick="rebuild()">Build plan</button>
+</div></div>
+
+<div class="back" id="m-setup"><div class="modal">
+  <h3>Layout &amp; pick path <button onclick="closeM('setup')">×</button></h3>
+  <div class="tabs">
+    <button class="on" onclick="tab(this,'t-layout')">Aisles</button>
+    <button onclick="tab(this,'t-path')">Pick path</button>
+    <button onclick="tab(this,'t-stack')">Stacking</button>
+  </div>
+  <div class="pane on" id="t-layout">
+    <div class="note">Lanes run front-to-back down each column. <b>Split</b> is how many positions are reached from the near face — the rest are picked from the far side, so nothing gets buried. Set split to the full depth for a block you can only reach from one side.<br><br>The percentages place each block on the floor plan, measured from the top-left corner of the building.</div>
+    <div id="layoutRows"></div>
+    <button class="tbtn" onclick="addAisle()">Add aisle</button>
+  </div>
+  <div class="pane" id="t-path">
+    <div class="note">A picker walks the corridors, not the blocks, and a corridor with product on both sides is picked left and right on one trip — that is where the volume should sit. A corridor with product on one side is walked in and back out, so it earns twice the steps for the same faces and should hold whatever moves least.<br><br><b>Yield</b> is faces reached per 1% of the building walked, doubled against one-sided corridors for the trip back. The route is ranked by it unless you reorder.<br><br>Order also sets the pallet build: trays carry load down the can columns and go first, cartons and carriers put it through board and go last.</div>
+    <div id="pathRows"></div>
+    <div class="row" style="margin-top:14px"><div><label class="f">Format order along the walk</label><div id="fmtRows"></div></div></div>
+    <div class="row">
+      <div><label class="f">Open lanes held back (%)</label><input type="number" id="cfg-reserve" min="0" max="50" value="12" onchange="readCfg()"></div>
+      <div><label class="f">First pass runs</label><select id="cfg-dir" onchange="readCfg()"><option value="lr">Left to right</option><option value="rl">Right to left</option></select></div>
+      <div><label class="f">Corridor grouping %</label><input type="number" id="cfg-gap" min="1" max="40" value="12" onchange="readCfg()"></div>
+      <div><label class="f">What ranks first</label><select id="cfg-rank" onchange="readCfg()">
+        <option value="velocity">Volume — busiest corridor gets the movers, crushables last</option>
+        <option value="format">Pack order — trays before carriers, everywhere</option>
+      </select></div>
+    </div>
+  </div>
+  <div class="pane" id="t-stack">
+    <div class="note">Derived from the item name, then checked against the packaging dimensions.</div>
+    <div id="stackRows"></div>
+  </div>
+</div></div>
+
+<div class="back" id="m-skus"><div class="modal">
+  <h3>SKUs <span id="skuCount" style="font-size:11px;color:var(--ink-dim);font-weight:400;margin-left:9px"></span><button onclick="closeM('skus')">×</button></h3>
+  <div class="row"><div><input type="text" id="skuFind" placeholder="Filter by name or ID" oninput="renderSkus()"></div></div>
+  <div class="scroll"><table id="skuTable"></table></div>
+</div></div>
+
+<div class="back" id="m-checks"><div class="modal">
+  <h3>Checks <button onclick="closeM('checks')">×</button></h3>
+  <div id="checksBody"></div>
+</div></div>
+
+<div class="back" id="m-moveplan"><div class="modal" style="max-width:1180px">
+  <h3>Move planner <span id="mv-day" style="font-size:11px;color:var(--accent);font-weight:400;margin-left:9px"></span><button onclick="closeM('moveplan')">×</button></h3>
+  <div class="note">Both buildings hold product while the move runs; the system shows one total. Keep-back per item is its daily depletion × (days to flip + safety). Anything above that floor is safe to send across.</div>
+  <div class="row">
+    <div><label class="f">Days to flip</label><input type="number" id="mv-flip" min="0" value="14" onchange="readMoveCfg()"></div>
+    <div><label class="f">Safety buffer (days)</label><input type="number" id="mv-safety" min="0" value="2" onchange="readMoveCfg()"></div>
+    <div><label class="f">Assumed DOS (no rate)</label><input type="number" id="mv-dos" min="1" value="30" onchange="readMoveCfg()"></div>
+    <div><label class="f">Pallets/day cap (0 = none)</label><input type="number" id="mv-cap" min="0" value="0" onchange="readMoveCfg()"></div>
+    <div><label class="f">Slot the plan to</label><select id="mv-peg" onchange="readMoveCfg()">
+      <option value="peak">Highest on hand seen</option>
+      <option value="current">Today's balance</option>
+    </select></div>
+    <div style="flex:0 0 auto;align-self:flex-end"><button class="tbtn" onclick="rebaseline()">Re-baseline</button></div>
+  </div>
+  <div class="stats" id="moveTotals" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px"></div>
+
+  <div class="logbox rc">
+    <b>Received into the new building</b>
+    <input type="text" id="mv-in-sku" placeholder="Item ID"><input type="number" id="mv-in-cases" placeholder="Cases"><input type="number" id="mv-in-pal" placeholder="Pallets">
+    <button class="tbtn" onclick="logInbound()">Add receipt</button>
+    <span>Adds to the new building and places it. Does not touch the old building.</span>
+  </div>
+  <div class="logbox tr">
+    <b>Transferred from the old building</b>
+    <input type="text" id="mv-tr-sku" placeholder="Item ID"><input type="number" id="mv-tr-cases" placeholder="Cases"><input type="number" id="mv-tr-pal" placeholder="Pallets">
+    <button class="tbtn" onclick="logTransfer()">Add transfer</button>
+    <span>Reduces the old building, adds to the new, and places it at its pegged slots.</span>
+  </div>
+  <div class="logbox bk">
+    <b>Sent back to the old building</b>
+    <input type="text" id="mv-bk-sku" placeholder="Item ID"><input type="number" id="mv-bk-cases" placeholder="Cases"><input type="number" id="mv-bk-pal" placeholder="Pallets">
+    <button class="tbtn" onclick="logSendBack()">Send back</button>
+    <span>For sales pulls. Reduces the new building and clears its positions, newest first.</span>
+  </div>
+
+  <div class="row" style="align-items:flex-end">
+    <div style="flex:3"><input type="text" id="mv-find" placeholder="Search item or ID" oninput="renderMove()"></div>
+    <div style="flex:0 0 auto"><button class="tbtn ghost" onclick="exportMovePlan()">Export move plan</button></div>
+    <div style="flex:0 0 auto"><button class="tbtn ghost" onclick="undoEdit()">Undo</button></div>
+  </div>
+  <div class="scroll" id="moveBody"><table id="moveTable"></table></div>
+  <div style="font-size:10px;color:var(--ink-dim);margin-top:9px;line-height:1.6">
+    <span class="pill tray">MOVE</span> surplus above the keep-back floor &nbsp;
+    <span class="pill fourpk">HOLD</span> inside the buffer &nbsp;
+    <span class="pill no">AT RISK</span> would run dry before the flip — keep or replenish.<br>
+    Mov pal is full pallets safe to move now; mov cases is everything over the floor, amber when it is loose cases below a full pallet. Edit any cs/day to override the depletion rate for that item.
+  </div>
+</div></div>
+
+<div class="back" id="m-log"><div class="modal">
+  <h3>Activity <button onclick="closeM('log')">×</button></h3>
+  <div class="scroll"><table id="logTable"></table></div>
+</div></div>
+
+<div class="back" id="m-cloud"><div class="modal">
+  <h3>Shared sync <button onclick="closeM('cloud')">×</button></h3>
+  <div class="note" id="sb-baked" style="display:none;border-left-color:var(--tray)">Connected to <b id="sb-where"></b>. Nothing to set up — just put your name in so the activity log shows who did what.</div>
+
+  <div id="sb-setup">
+    <div class="note">Everyone pointing at the same project sees the same plan. Paste the project URL and the publishable key from Supabase → Project settings → API Keys — the legacy anon key works too. Never the secret or service_role key. They stay on this device; the plan itself lives in the table.</div>
+    <div class="row">
+      <div><label class="f">Project URL</label><input type="text" id="sb-url" placeholder="https://xxxx.supabase.co"></div>
+    </div>
+    <div class="row">
+      <div><label class="f">Publishable key</label><input type="text" id="sb-key" placeholder="sb_publishable_... or eyJhbGci..."></div>
+    </div>
+    <div class="row">
+      <div><label class="f">Plan name</label><input type="text" id="sb-room" value="gulfport"></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div><label class="f">Your name</label><input type="text" id="sb-who" placeholder="Chandler"></div>
+  </div>
+  <button class="tbtn primary" onclick="connectCloud()">Connect</button>
+  <button class="tbtn ghost" onclick="pushCloud(true)">Save now</button>
+  <div class="note" id="sb-sql" style="margin-top:14px">Run this once in the Supabase SQL editor:<br><br>
+  <code>create table if not exists rb_plan (id text primary key, payload jsonb, rev int default 0, updated_by text, updated_at timestamptz default now());<br><br>
+  alter table rb_plan enable row level security;<br>
+  drop policy if exists rb_all on rb_plan;<br>
+  create policy rb_all on rb_plan for all using (true) with check (true);<br><br>
+  do $$ begin<br>
+  &nbsp;&nbsp;alter publication supabase_realtime add table rb_plan;<br>
+  exception when duplicate_object then null;<br>
+  end $$;</code><br><br>
+  That last block is what makes one person's edits appear on someone else's screen without a refresh. Safe to run more than once.</div>
+</div></div>
+
+
+<script>
+/* ============================================================
+   GULFPORT (WAREHOUSE 6) — RED BULL SLOTTING
+   Single file. Data lives in Supabase so several people can work
+   the same plan at once. Nothing is stored in a save file.
+   ============================================================ */
+
+/* ============================================================
+   SET THIS ONCE BEFORE YOU PUBLISH
+   Paste the project URL and the anon public key from Supabase →
+   Project settings → API. Everyone who opens the page is then on the
+   same plan with nothing to configure. Leave blank to make each
+   person enter their own under Sync.
+   ============================================================ */
+const CLOUD = {
+  url:  'https://bxuyqebzgyoqpzuxnchi.supabase.co',
+  key:  'sb_publishable_vUkgxszcfAimpA-DwvEBdg_srWl98sk',
+  room: 'gulfport'   // change per warehouse if you run more than one
+};
+const BUILD = '2026-07-30';
+
+/* ============================================================
+   SHARED PASSCODE
+   Blank = no passcode, the app opens straight up. To set one,
+   open Sync, type the code into the passcode box, and it prints
+   the line to paste back here. The code itself is never stored —
+   only this hash, so reading the file does not hand it over.
+   Be clear-eyed about what this is: it keeps the link from being
+   useful to whoever it gets forwarded to, and stops somebody
+   wandering in and re-slotting the warehouse. It is a lock on a
+   door, not a safe. Anything that really needs protecting wants
+   Supabase Auth and a tighter row policy.
+   ============================================================ */
+const GATE = { hash: 'd40f393e6f26043766784d87cfb5555ed41f3933b09069a29b0f92ee20585b24', salt: 'gulfport-slotting-v1' };
+
+/* SHA-256, written out so it behaves the same everywhere — the browser's
+   built-in crypto refuses to run on a file:// page, which would mean the
+   passcode worked once published and not while testing locally. */
+function sha256(msg){
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const bytes = [];
+  for (const ch of unescape(encodeURIComponent(msg))) bytes.push(ch.charCodeAt(0));
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  for (let i=7;i>=0;i--) bytes.push((i<4 ? Math.floor(bitLen / Math.pow(2, 8*i)) : 0) & 0xff);
+  const rr = (x,n) => (x >>> n) | (x << (32-n));
+  for (let b=0; b<bytes.length; b+=64){
+    const w = new Array(64);
+    for (let i=0;i<16;i++) w[i] = (bytes[b+i*4]<<24)|(bytes[b+i*4+1]<<16)|(bytes[b+i*4+2]<<8)|bytes[b+i*4+3];
+    for (let i=16;i<64;i++){
+      const s0 = rr(w[i-15],7) ^ rr(w[i-15],18) ^ (w[i-15]>>>3);
+      const s1 = rr(w[i-2],17) ^ rr(w[i-2],19) ^ (w[i-2]>>>10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+    }
+    let [a,bb,c,dd,e,f,g,h] = H;
+    for (let i=0;i<64;i++){
+      const S1 = rr(e,6) ^ rr(e,11) ^ rr(e,25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[i] + w[i]) | 0;
+      const S0 = rr(a,2) ^ rr(a,13) ^ rr(a,22);
+      const mj = (a & bb) ^ (a & c) ^ (bb & c);
+      const t2 = (S0 + mj) | 0;
+      h=g; g=f; f=e; e=(dd+t1)|0; dd=c; c=bb; bb=a; a=(t1+t2)|0;
+    }
+    H = [H[0]+a, H[1]+bb, H[2]+c, H[3]+dd, H[4]+e, H[5]+f, H[6]+g, H[7]+h].map(x => x|0);
+  }
+  return H.map(x => ((x>>>0).toString(16).padStart(8,'0'))).join('');
+}
+function codeHash(code){ return sha256(GATE.salt + '|' + String(code)); }
+
+/* ---------- physical model, from the RB packaging dimensions ---------- */
+/* caseWt is the HEAVIEST case in each range, not the average — a crush check
+   has to be sized for the worst case that will actually be on the floor. */
+const SIZE = {
+  '8.4': { cpp:144, caseHt:5.38, perLayer:16, layers:9, caseWt:15.34 },
+  '12' : { cpp:104, caseHt:6.31, perLayer:13, layers:8, caseWt:21.80 },
+  '16' : { cpp:154, caseHt:7.00, perLayer:22, layers:7, caseWt:13.60 },
+  '20' : { cpp:126, caseHt:7.75, perLayer:21, layers:6, caseWt:17.00 }
+};
+const PALLET_TARE = 45, PALLET_DECK = 6;
+
+/* Cases per pallet, straight off the EBMG report for Warehouse 6 (5/29/26).
+   Baked in so the daily job is one file. Drop a fresh EBMG export in whenever
+   ti-hi changes or new items land and this table is replaced for everyone. */
+const CPP_BUILTIN = {
+  '77471':147, '77511':126, '77513':144, '77527':104, '77545':154, '77577':144,
+  '77611':126, '77613':144, '77627':104, '77645':154, '77677':144, '77827':104,
+  '77877':144, '77977':144, '78013':144, '78077':104, '78177':104, '78527':104,
+  '78577':104, '78578':144, '78587':144, '79877':144, '79878':144, '86127':104,
+  '86177':144, '86178':144, '86187':104, '88627':104, '88677':144, '88678':144,
+  '88687':104, '89227':104, '89277':144, '89278':144, '89727':104, '89777':144,
+  '89778':104, '89977':144, '89987':104, '91027':104, '91077':144, '91177':144,
+  '91277':104, '96077':144, '96078':144, '96087':104, '96177':144, '96187':104,
+  '96277':144, '96287':104, '96377':144, '96387':104, '96427':104, '96627':104,
+  '96827':104, '96927':104, '97077':104, '97177':104, '97277':144, '97527':104,
+  '97577':144, '97627':104, '97877':144, '97913':144, '97977':144, '98013':144,
+  '98027':104, '98077':144, '98078':144, '98277':104, '98327':104, '98377':144,
+  '98378':144, '98387':104, '98477':104, '99027':104, '99077':144, '99277':104,
+  '99527':104, '99577':144, '99677':144, '99877':144
+};
+let cppTable = Object.assign({}, CPP_BUILTIN), cppStamp = 'built in · 5/29/26';
+
+/* Format drives whether load runs down the can columns or through board. */
+const FORMAT = {
+  TRAY  : { label:'Tray',    css:'tray',   color:'var(--tray)',   stack:2, note:'24 loose cans, load runs can to can' },
+  BIG   : { label:'Big single', css:'big',  color:'var(--big)',    stack:2, note:'16 and 20oz, tall can — stacks fine in the rack, rides on top of the build' },
+  '4PK' : { label:'4-pack',  css:'fourpk', color:'var(--fourpk)', stack:2, note:'carriers, load passes through board' },
+  CARTON: { label:'Carton',  css:'carton', color:'var(--carton)', stack:1, note:'12s and 18s, enclosed board' },
+  VAR   : { label:'Variety', css:'var',    color:'var(--carton)', stack:1, note:'mixed carton, least uniform' }
+};
+
+function sizeOf(name){ const m = String(name).toUpperCase().match(/(8\.4|12|16|20)\s*Z/); return m ? m[1] : null; }
+function formatOf(name){
+  const s = String(name).toUpperCase();
+  if (/VAR/.test(s)) return 'VAR';
+  if (/1[28]\s*PK/.test(s)) return 'CARTON';
+  if (/4\s*PK/.test(s)) return '4PK';
+  if (/SNG/.test(s)){
+    const z = sizeOf(name);
+    return (z === '16' || z === '20') ? 'BIG' : 'TRAY';
+  }
+  return 'TRAY';
+}
+function palletWeight(sz){ const s = SIZE[sz]; return s ? Math.round(s.cpp * s.caseWt + PALLET_TARE) : 0; }
+function loadPerCase(sz){ const s = SIZE[sz]; return s ? Math.round(palletWeight(sz)/s.perLayer) : 0; }
+function stackHeight(sz){ const s = SIZE[sz]; return s ? +((s.layers*s.caseHt + PALLET_DECK)*2).toFixed(1) : 0; }
+
+/* ---------- state ---------- */
+let cfg = {
+  /* top/left/width/height are percentages of the floor plan, so the map keeps
+     the real shape of the building rather than a stack of grids. */
+  aisles: [
+    /* split = positions reached from the near (north) face. Aisles 1 and 2 sit
+       against the top wall, so their north face is on the dead-end corridor and
+       their south face is on the busiest one — the depth goes to the south. */
+    { id:'A1', cols:8,  rows:5, split:2, top:11, left:21, width:22, height:14 },
+    { id:'A2', cols:13, rows:5, split:2, top:11, left:46, width:38, height:14 },
+    /* Aisle 3's north face is on the busiest corridor too, so it carries the
+       deeper side: 5 positions from the north, 3 from the south. */
+    { id:'A3', cols:9,  rows:8, split:5, top:38, left:21, width:22, height:25 },
+    { id:'A4', cols:12, rows:5, split:3, top:32, left:46, width:38, height:21 },
+    { id:'A5', cols:12, rows:5, split:3, top:70, left:21, width:41, height:14 }
+  ],
+  regions: [
+    { label:'Receiving',      top:5,  left:5,  width:14, height:9 },
+    { label:'Loading zone',   top:17, left:1,  width:6,  height:50, vertical:true },
+    { label:'Truck parking',  top:17, left:8,  width:6,  height:50, vertical:true },
+    { label:'Loading zone',   top:17, left:15, width:5,  height:50, vertical:true },
+    { label:'No loading zone',top:5,  left:21, width:63, height:5 },
+    { label:'No loading zone',top:86, left:21, width:41, height:5 },
+    { label:'Offices / sales',top:70, left:64, width:32, height:25 },
+    { label:'POS',            top:11, left:90, width:8,  height:6 },
+    { label:'Repack',         top:50, left:92, width:6,  height:14 }
+  ],
+  startDir: 'lr',       // first pass runs left to right
+  corridorGap: 12,      // % of the building: faces closer than this share a corridor
+  passOrder: null,      // walk order of the corridors; null = rank by productivity
+  fmtOrder: ['TRAY','4PK','BIG','CARTON','VAR'],
+  stackBy: { TRAY:2, BIG:2, '4PK':2, CARTON:1, VAR:1 },
+  /* Pack format is only half of it. A 16 or 20oz case is tall against a small
+     footprint, so a pallet of them racks and leans rather than crushes — the
+     load figure looks safe and the stack still is not. Whichever of the two
+     rules is stricter wins. */
+  stackBySize: { '8.4':2, '12':2, '16':2, '20':2 },
+  reserve: 12,
+  rank: 'velocity',     // 'velocity' = volume earns the corridor, crushables ride last
+                        // 'format'   = pack order outranks volume outright
+  dir: 'asc'
+};
+let inv = [];                 // [{sku,name,cases,daily,cpp,cppSrc,size,fmt,stackOverride,pallets}]
+let plan = { slots:{}, unplaced:[], offZone:[], splitAisle:[], builtOn:null };
+/* Both buildings hold product during the move; the system shows one total.
+   `peg` (plan.slots) is where each item is destined to live. `placed` is what
+   has physically arrived. The map in move mode draws `placed` over `peg`. */
+let move = {
+  day:0, daysToFlip:14, safety:2, assumedDos:30, palCap:0,
+  oldCases:{}, newCases:{}, rate:{}, placed:{}, seeded:false, lastDay:null,
+  peakCases:{}, pegBasis:'peak', pegStamp:null
+};
+const today = () => new Date().toISOString().slice(0,10);
+const dayGap = (a,b) => Math.round((Date.parse(b+'T00:00:00Z') - Date.parse(a+'T00:00:00Z')) / 86400000);
+let pins = {};                 // hand-placed positions, kept through a rebuild
+let undoStack = [];
+let showPath = false;
+let log  = [];
+let rateRows = null, cppRows = null;
+let mode = 'slot', hoverSku = null, dragFrom = null;
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+/* Some locked-down browsers throw on localStorage rather than returning null. */
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+};
+const pad = n => String(n).padStart(2,'0');
+const slotId = (a,c,b) => a + '-' + pad(c) + '-' + pad(b);
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',2600); }
+function openM(k){ $('m-'+k).classList.add('on'); if(k==='moveplan')renderMove(); if(k==='setup')renderSetup(); if(k==='skus')renderSkus(); if(k==='checks')renderChecks(); if(k==='log')renderLog(); if(k==='cloud')fillCloud(); }
+function closeM(k){ $('m-'+k).classList.remove('on'); }
+function tab(btn,id){ btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  const p=btn.closest('.modal'); p.querySelectorAll('.pane').forEach(x=>x.classList.remove('on')); $(id).classList.add('on'); }
+function note(action, detail){ log.unshift({ t:new Date().toISOString(), who:(store.get('rb_who')||'—'), action, detail }); if(log.length>400) log.length=400; }
+
+/* ---------- reading the two reports ---------- */
+function sheetGrid(file){
+  return new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = e => { try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+      res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:true, defval:null }));
+    } catch(err){ rej(err); } };
+    r.onerror = () => rej(new Error('Could not read the file'));
+    r.readAsArrayBuffer(file);
+  });
+}
+function headerRow(grid, needles){
+  for (let i=0;i<Math.min(grid.length,20);i++){
+    const cells = (grid[i]||[]).map(c=>String(c==null?'':c).toLowerCase());
+    if (needles.every(n => cells.some(c => c.includes(n)))) return i;
+  }
+  return -1;
+}
+function colIdx(row, needle){
+  for (let i=0;i<row.length;i++) if (String(row[i]==null?'':row[i]).toLowerCase().includes(needle)) return i;
+  return -1;
+}
+async function readRate(file){
+  if(!file) return;
+  try {
+    const g = await sheetGrid(file);
+    const h = headerRow(g, ['item name id','current on hand']);
+    if (h < 0) throw new Error('Could not find the Item Name ID / Current On Hand header');
+    const hr = g[h];
+    const cN = colIdx(hr,'item names'), cI = colIdx(hr,'item name id'),
+          cO = colIdx(hr,'current on hand'), cD = colIdx(hr,'projected daily rate');
+    rateRows = [];
+    for (let i=h+1;i<g.length;i++){
+      const r = g[i]||[]; const id = r[cI];
+      if (id == null || String(id).toLowerCase()==='total') continue;
+      const nm = String(r[cN]==null?'':r[cN]).trim();
+      if (!nm) continue;
+      rateRows.push({ sku:String(id).trim(), name:nm, raw:+r[cO]||0,
+        cases:Math.max(0,+r[cO]||0), daily:Math.max(0,+r[cD]||0) });
+    }
+    $('d-rate').classList.add('done');
+    $('s-rate').textContent = file.name + ' · ' + rateRows.length + ' items';
+    mergeReports();
+  } catch(err){ toast(err.message); }
+}
+async function readCpp(file){
+  if(!file) return;
+  try {
+    const g = await sheetGrid(file);
+    const h = headerRow(g, ['item name id','cases/pallet']);
+    if (h < 0) throw new Error('Could not find the Item Name ID / Cases per Pallet header');
+    const hr = g[h];
+    const cN = colIdx(hr,'item names'), cI = colIdx(hr,'item name id'), cC = colIdx(hr,'cases/pallet');
+    cppRows = [];
+    for (let i=h+1;i<g.length;i++){
+      const r = g[i]||[]; const id = r[cI];
+      if (id == null || String(id).toLowerCase()==='total') continue;
+      const nm = String(r[cN]==null?'':r[cN]).trim();
+      if (!nm) continue;
+      const v = +r[cC]||0;
+      if (v > 0) cppRows.push({ sku:String(id).trim(), name:nm, cpp:v });
+    }
+    if (!cppRows.length) throw new Error('No cases per pallet values found in that file');
+    const added = cppRows.filter(c => !cppTable[c.sku]).length;
+    const changed = cppRows.filter(c => cppTable[c.sku] && cppTable[c.sku] !== c.cpp).length;
+    cppRows.forEach(c => cppTable[c.sku] = c.cpp);
+    cppStamp = 'refreshed ' + new Date().toLocaleDateString();
+    $('d-cpp').classList.add('done');
+    $('s-cpp').textContent = file.name + ' · ' + cppRows.length + ' items · ' + added + ' new, ' + changed + ' changed';
+    note('Pallet table refreshed', cppRows.length + ' items · ' + added + ' new · ' + changed + ' changed');
+    toast('Pallet table updated — ' + added + ' new, ' + changed + ' changed.');
+    mergeReports();
+  } catch(err){ toast(err.message); }
+}
+
+/* Build the SKU master. Cases per pallet falls back to the can-size rule
+   rather than assuming one pallet, which is what stranded the promos. */
+/* `fresh` means a new file just landed. Only then do the two buildings get
+   re-reconciled — recomputing on every call (say, when a setting changes)
+   would compare the file against itself and wipe the day's movement. */
+function mergeReports(fresh){
+  if (!rateRows) { $('dataMsg').textContent = 'Waiting on the sales rate report.'; return; }
+  const keepOverride = {}; inv.forEach(i => { if (i.stackOverride != null) keepOverride[i.sku] = i.stackOverride; });
+
+  inv = rateRows.map(r => {
+    const size = sizeOf(r.name), fmt = formatOf(r.name);
+    const rep = cppTable[r.sku] || 0;
+    const rule = size && SIZE[size] ? SIZE[size].cpp : 0;
+    const cpp = rep > 0 ? rep : rule;
+    return {
+      sku:r.sku, name:r.name, cases:r.cases, daily:r.daily,
+      cpp: cpp || 1, cppSrc: rep>0 ? (CPP_BUILTIN[r.sku]===rep ? 'built in' : 'report') : (rule?'size rule':'none'),
+      reportCpp: rep, ruleCpp: rule,
+      size, fmt, stackOverride: keepOverride[r.sku] != null ? keepOverride[r.sku] : null,
+      pallets: 0
+    };
+  });
+  /* The report is one number covering both buildings, because the system
+     shows all of it in one place. What is standing in the new building only
+     changes when somebody logs it, so the old building is whatever the report
+     says minus what has already come across. Sales come out of the old
+     building, so a smaller number in tomorrow's file lands there by itself. */
+  if (fresh !== false){
+  move.reconcile = []; move.drops = [];
+  move.wentDown = 0; move.wentUp = 0;
+  inv.forEach(i => {
+    if (move.newCases[i.sku] == null) move.newCases[i.sku] = 0;
+    const prevOld = move.oldCases[i.sku];
+    const derived = i.cases - move.newCases[i.sku];
+    if (derived < 0){
+      /* The report says less exists than we have logged into the new building.
+         Trust the report for the total and flag it rather than invent stock. */
+      move.reconcile.push({ sku:i.sku, total:i.cases, logged:move.newCases[i.sku] });
+      move.newCases[i.sku] = i.cases;
+      move.oldCases[i.sku] = 0;
+    } else {
+      move.oldCases[i.sku] = derived;
+      if (move.seeded && prevOld != null){
+        const delta = derived - prevOld;
+        if (delta < 0){
+          move.wentDown -= delta;
+          /* A drop far bigger than the item sells is not sales. During a move
+             the likeliest cause is stock that went across without being
+             logged, which would otherwise just look like it evaporated. */
+          const cd = rateOf(i);
+          if (cd > 0 && (-delta) > cd * 3)
+            move.drops.push({ sku:i.sku, fell:-delta, days:(-delta)/cd, rate:cd });
+        } else if (delta > 0) move.wentUp += delta;
+      }
+    }
+  });
+  move.lastDay = today();
+  move.seeded = true;
+  }
+  inv.forEach(i => { if (move.newCases[i.sku] == null) move.newCases[i.sku] = 0;
+                     if (move.oldCases[i.sku] == null) move.oldCases[i.sku] = i.cases; });
+
+  /* Slot to the biggest the item gets, not to today's balance. Selling down
+     during the move would otherwise shrink the plan under everyone's feet and
+     strand pallets that are already on the floor. */
+  inv.forEach(i => {
+    const seen = move.peakCases[i.sku] || 0;
+    if (i.cases > seen) move.peakCases[i.sku] = i.cases;
+  });
+  if (!move.pegStamp) move.pegStamp = today();
+  inv.forEach(i => {
+    i.pegCases = move.pegBasis === 'current' ? i.cases
+      : Math.max(i.cases, move.peakCases[i.sku] || 0);
+    i.pallets = i.cpp > 0 ? Math.ceil(i.pegCases / i.cpp) : 0;
+  });
+
+  const noRate = Object.keys(cppTable).filter(k => !rateRows.some(r=>r.sku===k)).length;
+  const unknown = inv.filter(i => i.cppSrc === 'size rule').length;
+  $('dataMsg').innerHTML = inv.length + ' SKUs · ' + inv.reduce((s,i)=>s+i.pallets,0) + ' pallets · '
+    + inv.reduce((s,i)=>s+i.cases,0).toLocaleString() + ' cases'
+    + '<br>Old building ' + Math.round(inv.reduce((s,i)=>s+oldOf(i.sku),0)).toLocaleString()
+    + ' cs · new building ' + Math.round(inv.reduce((s,i)=>s+newOf(i.sku),0)).toLocaleString() + ' cs'
+    + (move.wentDown ? ' · <b>down ' + Math.round(move.wentDown).toLocaleString() + '</b>' : '')
+    + (move.wentUp ? ' · received ' + Math.round(move.wentUp).toLocaleString() : '')
+    + '<br>Slotting to ' + (move.pegBasis === 'current' ? "today's balance"
+        : 'the highest on hand seen since ' + move.pegStamp)
+    + ' — ' + inv.reduce((s,i)=>s+i.pallets,0) + ' pallets'
+    + (plan.builtOn ? '<br>Floor plan unchanged — laid out ' + new Date(plan.builtOn).toLocaleDateString()
+        + ((plan.grew||[]).length ? ' · ' + plan.grew.length + ' item(s) took extra positions' : '')
+        + ((plan.shrank||[]).length ? ' · ' + plan.shrank.length + ' gave some back' : '')
+      : '')
+    + ((move.reconcile||[]).length ? ' · <b style="color:var(--warn)">' + move.reconcile.length + ' item(s) need checking</b>' : '')
+    + '<br>Pallet table: ' + Object.keys(cppTable).length + ' items (' + cppStamp + ')'
+    + (unknown ? ' · <b style="color:var(--accent)">' + unknown + ' filled from the can size</b>' : '')
+    + (noRate ? ' · ' + noRate + ' in the table with no sales rate' : '');
+  syncPlan();
+  note('Loaded reports', inv.length + ' SKUs'
+    + (move.wentDown ? ' · old building down ' + Math.round(move.wentDown).toLocaleString() + ' cs' : '')
+    + (move.wentUp ? ' · received ' + Math.round(move.wentUp).toLocaleString() + ' cs' : ''));
+}
+
+/* ---------- lanes ---------- */
+function maxStack(item){
+  if (item.stackOverride != null) return item.stackOverride;
+  const byFmt  = cfg.stackBy[item.fmt] || 1;
+  const bySize = (cfg.stackBySize && item.size && cfg.stackBySize[item.size] != null)
+    ? cfg.stackBySize[item.size] : 2;
+  return Math.min(byFmt, bySize);
+}
+function stackReason(item){
+  if (item.stackOverride != null) return 'set by hand';
+  const byFmt  = cfg.stackBy[item.fmt] || 1;
+  const bySize = (cfg.stackBySize && item.size && cfg.stackBySize[item.size] != null)
+    ? cfg.stackBySize[item.size] : 2;
+  if (bySize < byFmt) return item.size + 'oz rule';
+  if (byFmt < bySize) return FORMAT[item.fmt].label.toLowerCase() + ' rule';
+  return byFmt >= 2 ? 'stacks' : 'single high';
+}
+/* How tall a case is against its own footprint. Above about 0.7 a pallet
+   starts leaning before it starts crushing. */
+function slenderness(size){
+  const s = SIZE[size]; if (!s) return 0;
+  return s.caseHt / Math.sqrt((40*48) / s.perLayer);
+}
+function laneCap(depth, st){ return st >= 2 ? 2*depth - 1 : depth; }
+
+/* A lane is one column read from one face: the near face reaches `split`
+   positions, the far side picks the rest, so nothing is buried.
+
+   Faces aren't walked aisle by aisle. A picker walks the corridors between
+   the blocks, and one corridor serves the faces on BOTH sides of it — the
+   second pass down the building picks the south faces of aisles 1 and 2 and
+   the north faces of 3 and 4 on the same trip. Passes alternate direction. */
+function corridors(){
+  const faces = [];
+  cfg.aisles.forEach(a => {
+    const split = Math.max(0, Math.min(a.split, a.rows));
+    const step = a.width / a.cols;
+    for (let c=1;c<=a.cols;c++){
+      const x = a.left + (c - 0.5) * step;
+      const north = [];
+      for (let b=1;b<=split;b++) north.push(slotId(a.id,c,b));
+      if (north.length) faces.push({ key:a.id+'-'+c+'-N', aisle:a.id, col:c, face:'N',
+        group:a.id+'N', cells:north, x, edge:a.top, bound:a.top });
+      const south = [];
+      for (let b=a.rows;b>split;b--) south.push(slotId(a.id,c,b));
+      if (south.length) faces.push({ key:a.id+'-'+c+'-S', aisle:a.id, col:c, face:'S',
+        group:a.id+'S', cells:south, x, edge:a.top + a.height, bound:a.top + a.height });
+    }
+  });
+  if (!faces.length) return [];
+
+  const gap = Math.max(1, cfg.corridorGap || 12);
+  const edges = [...new Set(faces.map(f => f.edge))].sort((m,n) => m-n);
+  const groups = [[edges[0]]];
+  for (let i=1;i<edges.length;i++){
+    if (edges[i] - edges[i-1] <= gap) groups[groups.length-1].push(edges[i]);
+    else groups.push([edges[i]]);
+  }
+
+  /* Each corridor, still in top-to-bottom order. `band` is its permanent id. */
+  let bands = groups.map((g, i) => {
+    const mine = faces.filter(f => g.indexOf(f.edge) > -1);
+    const above = mine.filter(f => f.face === 'S');   // blocks ending above the corridor
+    const below = mine.filter(f => f.face === 'N');   // blocks starting below it
+    let y;
+    if (above.length && below.length)
+      y = (Math.max(...above.map(f=>f.bound)) + Math.min(...below.map(f=>f.bound))) / 2;
+    else if (below.length) y = Math.min(...below.map(f=>f.bound)) - 3.5;
+    else y = Math.max(...above.map(f=>f.bound)) + 3.5;
+    const x0 = Math.min(...mine.map(f=>f.x)), x1 = Math.max(...mine.map(f=>f.x));
+    /* Product on both sides means you pick left and right on one walk. One
+       side only means walking in and back out for the same number of faces,
+       so it earns half as much per step and wants the slow movers. */
+    const bothSides = above.length > 0 && below.length > 0;
+    const span = Math.max(1, x1 - x0);
+    return { band:i, y, x0, x1, bothSides, faces:mine,
+      yield: mine.length / (span * (bothSides ? 1 : 2)),
+      aisles:[...new Set(mine.map(f=>f.aisle))] };
+  });
+
+  /* Walk the productive corridors first; the one-sided ends pick up whatever
+     moves least, which is where you want the detour to be. */
+  let order = cfg.passOrder && cfg.passOrder.length === bands.length
+    ? cfg.passOrder.filter(b => b < bands.length)
+    : bands.slice().sort((m,n) => n.yield - m.yield).map(b => b.band);
+  bands.forEach(b => { if (order.indexOf(b.band) < 0) order.push(b.band); });
+
+  /* Direction follows continuity — each pass starts at whichever end is
+     nearer to where the last one finished, so the route serpentines. */
+  let at = (cfg.startDir === 'rl') ? 100 : 0;
+  return order.map((bid, i) => {
+    const b = bands[bid];
+    const dir = Math.abs(b.x0 - at) <= Math.abs(b.x1 - at) ? 'lr' : 'rl';
+    /* Blocks stacked above and below one corridor share an x range — aisle 1's
+       south face and aisle 3's north face both sit at 21-43%. Sorting purely
+       by x interleaves them, which splits a large item across two aisles and
+       burns a pick face in each. Faces are grouped by aisle and face first,
+       those groups ordered by where they start, then by x inside the group,
+       so an item stays in one aisle. */
+    const groups = {};
+    b.faces.forEach(f => { const k = f.aisle + f.face; (groups[k] = groups[k] || []).push(f); });
+    const keys = Object.keys(groups).sort((m,n) => {
+      const gm = groups[m], gn = groups[n];
+      const em = dir === 'lr' ? Math.min(...gm.map(f=>f.x)) : -Math.max(...gm.map(f=>f.x));
+      const en = dir === 'lr' ? Math.min(...gn.map(f=>f.x)) : -Math.max(...gn.map(f=>f.x));
+      return em - en || (m < n ? -1 : 1);
+    });
+    const lanes = [];
+    keys.forEach(k => {
+      groups[k].sort((m,n) => dir === 'lr' ? m.x - n.x : n.x - m.x);
+      lanes.push(...groups[k]);
+    });
+    at = dir === 'lr' ? b.x1 : b.x0;
+    /* `lanes` is assignment order — grouped by aisle so an item stays in one.
+       `sweep` is the order a picker actually walks it, straight along x, so
+       both sides of the corridor come off in a single pass. */
+    const sweep = b.faces.slice().sort((m,n) => dir === 'lr' ? m.x - n.x : n.x - m.x);
+    return { pass:i+1, band:bid, dir, y:b.y, x0:b.x0, x1:b.x1, lanes, sweep,
+      bothSides:b.bothSides, yield:b.yield, aisles:b.aisles };
+  });
+}
+
+function buildLanes(){
+  const out = [];
+  corridors().forEach(c => c.lanes.forEach(L => out.push(L)));
+  return out;
+}
+
+/* Aisle order as the picker first reaches each one — used for labels only. */
+function walkOrder(){
+  const seen = [];
+  corridors().forEach(c => c.lanes.forEach(L => { if (seen.indexOf(L.aisle) < 0) seen.push(L.aisle); }));
+  cfg.aisles.forEach(a => { if (seen.indexOf(a.id) < 0) seen.push(a.id); });
+  return seen;
+}
+
+/* Growth room comes off the END of each aisle face. Spreading it evenly by
+   lane index drops an empty lane into the middle of an item's run, which
+   splits the item on the map for no reason. */
+function reservedSet(lanes, keep){
+  const set = new Set();
+  const total = lanes.length;
+  if (keep <= 0 || keep >= total) return set;
+  const groups = [];
+  lanes.forEach((L,ix) => {
+    const last = groups[groups.length-1];
+    if (last && last.key === L.group) last.idx.push(ix);
+    else groups.push({ key:L.group, idx:[ix] });
+  });
+  let left = keep;
+  groups.forEach((g,i) => {
+    const share = i === groups.length-1 ? left : Math.round(keep * g.idx.length / total);
+    const take = Math.min(share, g.idx.length - 1, left);
+    for (let k=0; k<take; k++) set.add(g.idx[g.idx.length-1-k]);
+    left -= take;
+  });
+  return set;
+}
+
+/* ---------- the plan ---------- */
+
+/* One allocation pass. `holdCount` lanes are kept open for growth, spread
+   evenly along the walk so the spare capacity sits near its own category. */
+function allocate(lanes, holdCount, queue, frozenBySku, seedSlots){
+  const hold = reservedSet(lanes, holdCount);
+  const slots = {}; Object.keys(seedSlots).forEach(k => slots[k] = seedSlots[k]);
+  const taken = new Set();
+  lanes.forEach((L,ix) => { if (L.cells.some(c => slots[c])) taken.add(ix); });
+
+  /* One pallet on the pick face so it can be taken without moving anything,
+     then everything behind it doubled. If the count leaves one over it goes to
+     the deepest position, not to the one right behind the face — a half-empty
+     slot at the back costs nothing, one at the front looks like a mistake. */
+  function layIn(L, item, left, st){
+    const free = L.cells.filter(c => !slots[c]);
+    if (!free.length) return 0;
+    const take = Math.min(left, laneCap(free.length, st));
+    if (st >= 2){
+      let k = 0, rem = take;
+      /* Only lay a fresh pick face if the front of the lane is actually empty.
+         Topping up a lane that already has one would put a half-full position
+         in front of a full one. */
+      if (!slots[L.cells[0]]){ slots[free[k++]] = { sku:item.sku, n:1 }; rem--; }
+      while (rem >= 2 && k < free.length){ slots[free[k++]] = { sku:item.sku, n:2 }; rem -= 2; }
+      if (rem > 0 && k < free.length) slots[free[k++]] = { sku:item.sku, n:rem };
+    } else {
+      for (let k=0; k<take; k++) slots[free[k]] = { sku:item.sku, n:1 };
+    }
+    return take;
+  }
+
+  /* Who owns the north face of each column, so we can tell a fresh column
+     from the leftover half of someone else's. */
+  const northOwner = {};
+  const skipped = [];
+
+  const remaining = [], zoneStart = {}, startAt = {};
+  let cursor = 0;
+  queue.forEach(item => {
+    let left = item.pallets - (frozenBySku[item.sku] || 0);
+    if (left <= 0) return;
+    if (zoneStart[item.fmt] == null) zoneStart[item.fmt] = cursor;
+    /* Where the route had reached when this item came up. Anything it cannot
+       fit must land at or after this point, never in a better corridor it
+       already walked past — otherwise a slow item claims a released reserve
+       lane in the busiest aisle. */
+    startAt[item.sku] = cursor;
+    const st = maxStack(item);
+
+    /* Reuse a lane we stepped over earlier, but only one and only if it takes
+       the item whole — spreading a remainder across several skipped lanes puts
+       it back in two aisles, which is the thing being avoided. */
+    for (let k=0; k<skipped.length; k++){
+      const ix = skipped[k];
+      if (taken.has(ix)) continue;
+      const free = lanes[ix].cells.filter(c => !slots[c]).length;
+      if (left > laneCap(free, st)) continue;
+      const got = layIn(lanes[ix], item, left, st);
+      if (got > 0){
+        taken.add(ix); left -= got;
+        if (lanes[ix].face === 'N') northOwner[lanes[ix].aisle + '-' + lanes[ix].col] = item.sku;
+        break;
+      }
+    }
+    if (left <= 0) return;
+
+    /* Would the whole item fit in what is left of the aisle the cursor is in? */
+    const fitsHere = () => {
+      const g = lanes[cursor] && lanes[cursor].group;
+      if (!g) return true;
+      let room = 0;
+      for (let ix=cursor; ix<lanes.length && lanes[ix].group === g; ix++){
+        if (hold.has(ix) || taken.has(ix)) continue;
+        room += laneCap(lanes[ix].cells.filter(c => !slots[c]).length, st);
+      }
+      return room >= left;
+    };
+    /* If not, step to the next aisle rather than straddle two of them — one
+       item in two aisles means a pick face burned in each and pickers hunting
+       for the same code in two places. The lanes stepped over are backfilled
+       by smaller items afterwards. */
+    if (cursor < lanes.length && !fitsHere()){
+      const g = lanes[cursor].group;
+      let ahead = cursor;
+      while (ahead < lanes.length && lanes[ahead].group === g) ahead++;
+      if (ahead < lanes.length){
+        let room = 0;
+        for (let ix=ahead; ix<lanes.length; ix++){
+          if (hold.has(ix) || taken.has(ix)) continue;
+          room += laneCap(lanes[ix].cells.filter(c => !slots[c]).length, st);
+        }
+        if (room >= left){
+          for (let ix=cursor; ix<ahead; ix++) if (!hold.has(ix) && !taken.has(ix)) skipped.push(ix);
+          cursor = ahead;
+        }
+      }
+    }
+
+    while (left > 0 && cursor < lanes.length){
+      const L = lanes[cursor];
+      if (hold.has(cursor) || taken.has(cursor)) { cursor++; continue; }
+      /* Don't start an item on the back half of a column another item already
+         owns unless it fits there outright — otherwise it straddles two
+         columns when a whole one was about to come free. */
+      const owner = northOwner[L.aisle + '-' + L.col];
+      if (L.face === 'S' && owner && owner !== item.sku && left > laneCap(L.cells.length, st)){
+        skipped.push(cursor); cursor++; continue;
+      }
+      const got = layIn(L, item, left, st);
+      if (got > 0){
+        taken.add(cursor); left -= got;
+        if (L.face === 'N') northOwner[L.aisle + '-' + L.col] = item.sku;
+      }
+      cursor++;
+    }
+    if (left > 0) remaining.push({ item, left });
+  });
+
+  /* Anything small enough drops into the half-columns we stepped over — but
+     only from its own format's stretch of the route onward. Backfilling
+     without that check puts cartons ahead of the carriers on the build. */
+  /* Where an item already lives, so a leftover pallet goes back to the same
+     aisle instead of opening a second home for the same code. */
+  const homeOf = sku => {
+    for (const L of lanes) if (L.cells.some(c => slots[c] && slots[c].sku === sku)) return L.aisle;
+    return null;
+  };
+  const leftovers = remaining.slice();
+  remaining.length = 0;
+  leftovers.forEach(r => {
+    let left = r.left;
+    const st = maxStack(r.item);
+    let mine = homeOf(r.item.sku);       // locks on first placement
+    const from = cfg.rank === 'format'
+      ? (zoneStart[r.item.fmt] == null ? lanes.length : zoneStart[r.item.fmt])
+      : (startAt[r.item.sku] || 0);
+    for (const ix of skipped){
+      if (left <= 0) break;
+      if (ix < from || taken.has(ix)) continue;
+      if (mine && lanes[ix].aisle !== mine) continue;
+      if (left > laneCap(lanes[ix].cells.length, st)) continue;
+      const got = layIn(lanes[ix], r.item, left, st);
+      if (got > 0){ taken.add(ix); left -= got; if (!mine) mine = lanes[ix].aisle; }
+    }
+    if (left > 0) remaining.push({ item:r.item, left });
+  });
+
+  /* Last resort. Held lanes come back before anything is left homeless, and a
+     format may only fall back into the territory of the one ahead of it —
+     otherwise crushables drift toward the front of the walk. */
+  const unplaced = [], offZone = [], splitAisle = [];
+  remaining.forEach(r => {
+    let left = r.left;
+    const st = maxStack(r.item);
+    const from = cfg.rank === 'format'
+      ? Math.min(zoneStart[r.item.fmt] == null ? lanes.length : zoneStart[r.item.fmt], lanes.length)
+      : Math.min(startAt[r.item.sku] || 0, lanes.length);
+    let floor = 0;
+    if (cfg.rank === 'format'){
+      const fpos = cfg.fmtOrder.indexOf(r.item.fmt);
+      for (let k=fpos-1; k>=0; k--){ const z = zoneStart[cfg.fmtOrder[k]]; if (z != null){ floor = z; break; } }
+    } else {
+      floor = startAt[r.item.sku] || 0;   // never drift into an earlier corridor
+    }
+    const order = [];
+    for (let ix=from; ix<lanes.length; ix++) order.push(ix);
+    for (let ix=from-1; ix>=floor; ix--) order.push(ix);
+    /* Settle on one aisle before placing anything. If the item has already
+       started somewhere that is its aisle; otherwise take the earliest aisle
+       on the route with room for the whole remainder. Only when no single
+       aisle can hold it does it get spread, and then it is reported. */
+    let mine = homeOf(r.item.sku);
+    if (!mine){
+      const room = {};
+      order.forEach(ix => { if (taken.has(ix)) return;
+        const a = lanes[ix].aisle;
+        room[a] = (room[a]||0) + laneCap(lanes[ix].cells.filter(c => !slots[c]).length, st); });
+      for (const ix of order){
+        const a = lanes[ix].aisle;
+        if (!taken.has(ix) && (room[a]||0) >= left){ mine = a; break; }
+      }
+    }
+    const place = restrict => {
+      for (const ix of order){
+        if (left <= 0) break;
+        if (taken.has(ix)) continue;
+        if (restrict && lanes[ix].aisle !== restrict) continue;
+        const got = layIn(lanes[ix], r.item, left, st);
+        if (got > 0){
+          taken.add(ix); left -= got;
+          if (ix < from) offZone.push({ sku:r.item.sku, lane:lanes[ix].aisle });
+          if (restrict == null && mine && lanes[ix].aisle !== mine)
+            splitAisle.push({ sku:r.item.sku, from:mine, to:lanes[ix].aisle });
+        }
+      }
+    };
+    if (mine) place(mine);
+    if (left > 0) place(null);
+    if (left > 0) unplaced.push({ sku:r.item.sku, qty:left });
+  });
+
+  /* Final sweep. Whatever route an item took through the passes above, it
+     should end up in one aisle. Any item sitting in two gets its smaller
+     share lifted and re-laid in the aisle holding the bulk of it, if there is
+     room; if there is not, it stays put and gets reported. */
+  (function consolidate(){
+    const spread = {};
+    lanes.forEach((L,ix) => L.cells.forEach(c => { const p = slots[c]; if (!p) return;
+      (spread[p.sku] = spread[p.sku] || {})[L.aisle] = (spread[p.sku][L.aisle]||0) + p.n; }));
+    Object.keys(spread).forEach(sku => {
+      const homes = Object.keys(spread[sku]);
+      if (homes.length < 2) return;
+      const keep = homes.sort((a,b) => spread[sku][b] - spread[sku][a])[0];
+      const item = inv.find(i => i.sku === sku); if (!item) return;
+      const st = maxStack(item);
+      // lift everything outside the main aisle
+      let lifted = 0;
+      lanes.forEach((L,ix) => { if (L.aisle === keep) return;
+        let touched = false;
+        L.cells.forEach(c => { if (slots[c] && slots[c].sku === sku && !slots[c].pinned && !slots[c].frozen){
+          lifted += slots[c].n; delete slots[c]; touched = true; } });
+        if (touched && !L.cells.some(c => slots[c])) taken.delete(ix);
+      });
+      if (!lifted) return;
+      // re-lay it inside the main aisle
+      let left = lifted;
+      for (let ix=0; ix<lanes.length && left>0; ix++){
+        if (lanes[ix].aisle !== keep) continue;
+        if (taken.has(ix) && !lanes[ix].cells.some(c => slots[c] && slots[c].sku === sku)) continue;
+        const got = layIn(lanes[ix], item, left, st);
+        if (got > 0){ taken.add(ix); left -= got; }
+      }
+      if (left > 0){
+        // no room at home — put it back wherever it fits and say so
+        for (let ix=0; ix<lanes.length && left>0; ix++){
+          if (taken.has(ix)) continue;
+          const got = layIn(lanes[ix], item, left, st);
+          if (got > 0){ taken.add(ix); left -= got;
+            splitAisle.push({ sku, from:keep, to:lanes[ix].aisle }); }
+        }
+        if (left > 0) unplaced.push({ sku, qty:left });
+      }
+    });
+  })();
+
+  return { slots, unplaced, offZone, splitAisle, lanesUsed: taken.size, held: holdCount };
+}
+
+function runPlan(){
+  if (!inv.length){ render(); return; }
+  const lanes = buildLanes();
+  const fi = f => { const i = cfg.fmtOrder.indexOf(f); return i < 0 ? 99 : i; };
+  const items = inv.filter(i => i.pallets > 0);
+
+  let queue;
+  if (cfg.rank === 'format'){
+    /* Stackability outranks everything: every tray placed before any carton. */
+    queue = items.slice().sort((a,b) => fi(a.fmt) - fi(b.fmt) || b.daily - a.daily || b.pallets - a.pallets);
+  } else {
+    /* Velocity decides which corridor an item earns, stackability decides
+       where it sits once inside. A one-sided corridor is walked in and back
+       out, so what goes there should be what nobody visits — putting a
+       1 cs/day tray in a prime corridor to protect a pallet build costs more
+       walking than the crush risk is worth. */
+    queue = [];
+    /* Volume decides which corridor an item earns — except for anything that
+       cannot be double stacked. A carton has to ride on top of the build no
+       matter how well it sells, so crushables rank behind everything that
+       stacks and fill the tail of the route. Among the rest, velocity wins,
+       and the pack order is applied again inside each corridor. */
+    const stacks = i => maxStack(i) >= 2 ? 0 : 1;
+    const pool = items.slice().sort((a,b) =>
+      stacks(a) - stacks(b) || b.daily - a.daily || b.pallets - a.pallets);
+    let at = 0;
+    /* Lane demand for a set of items laid into this corridor in the given
+       order — walks the real lane depths rather than guessing an average. */
+    const demand = (set, c) => {
+      let lane = 0;
+      for (const it of set){
+        let left = it.pallets;
+        while (left > 0 && lane < c.lanes.length) left -= laneCap(c.lanes[lane++].cells.length, maxStack(it));
+      }
+      return lane;
+    };
+    corridors().forEach(c => {
+      const room = c.lanes.length;
+      const pick = [];
+      let need = 0;
+      while (at < pool.length && need < room){
+        const it = pool[at];
+        const depth = c.lanes[Math.min(pick.length, c.lanes.length-1)].cells.length;
+        need += Math.max(1, Math.ceil(it.pallets / laneCap(depth, maxStack(it))));
+        pick.push(it); at++;
+      }
+      /* Order inside the corridor: anything that cannot be double stacked
+         goes last so it lands on top of the build, and everything else stays
+         in volume order. Sorting the full pack ladder here instead would push
+         a fast big-single to the tail of the group, and the tail is what
+         spills into the next corridor — which is how a 54 cs/day item ended
+         up on a dead end. Between two things that both stack, the extra
+         protection is not worth the walk. */
+      pick.sort((a,b) => stacks(a) - stacks(b) || b.daily - a.daily);
+      queue.push(...pick);
+    });
+    while (at < pool.length) queue.push(pool[at++]);
+  }
+
+  const seed = {};
+  Object.keys(pins).forEach(id => seed[id] = { ...pins[id], pinned:true });
+  const frozenBySku = {};
+  Object.values(seed).forEach(p => frozenBySku[p.sku] = (frozenBySku[p.sku]||0) + p.n);
+
+  const want = Math.floor(lanes.length * (cfg.reserve/100));
+  let best = null;
+  for (let h = want; h >= 0; h--){
+    const r = allocate(lanes, h, queue, frozenBySku, seed);
+    if (!best) best = r;
+    if (r.unplaced.length === 0){ best = r; break; }
+    if (r.unplaced.reduce((s,u)=>s+u.qty,0) < best.unplaced.reduce((s,u)=>s+u.qty,0)) best = r;
+  }
+  plan = { slots:best.slots, unplaced:best.unplaced, offZone:best.offZone,
+           splitAisle:best.splitAisle, held:best.held, builtOn:new Date().toISOString() };
+  render();
+  pushCloud(false);
+}
+
+/* ---------- keeping a built plan still ----------
+   A slot plan is a decision, not a daily calculation. Rates move on nearly
+   every item every day, so re-running the allocator on each upload would
+   reshuffle the whole floor overnight and nobody could find anything. Once a
+   plan exists the upload only tops it up: items that grew get more positions,
+   items that shrank give some back, and everything already placed stays where
+   it is. Rebuilding is something you ask for. */
+function syncPlan(){
+  if (!plan.builtOn || !Object.keys(plan.slots).length){ runPlan(); return; }
+  const lanes = buildLanes();
+  const placedBy = {};
+  Object.values(plan.slots).forEach(p => placedBy[p.sku] = (placedBy[p.sku]||0) + p.n);
+
+  const added = [], trimmed = [], stranded = [];
+
+  /* Give back what is no longer needed, deepest position first. */
+  inv.forEach(it => {
+    let over = (placedBy[it.sku]||0) - it.pallets;
+    if (over <= 0) return;
+    for (let i=lanes.length-1; i>=0 && over>0; i--){
+      const cells = lanes[i].cells;
+      for (let c=cells.length-1; c>=0 && over>0; c--){
+        const p = plan.slots[cells[c]];
+        if (!p || p.sku !== it.sku) continue;
+        const cut = Math.min(p.n, over);
+        if (cut >= p.n) delete plan.slots[cells[c]]; else p.n -= cut;
+        over -= cut;
+      }
+    }
+    trimmed.push(it.sku);
+  });
+
+  /* Take on what has grown, next to where that item already lives. */
+  const owns = sku => { for (const L of lanes) if (L.cells.some(c => plan.slots[c] && plan.slots[c].sku === sku)) return L.aisle; return null; };
+  inv.forEach(it => {
+    let short = it.pallets - (placedBy[it.sku]||0);
+    if (short <= 0) return;
+    const st = maxStack(it);
+    const home = owns(it.sku);
+    const order = home
+      ? lanes.map((L,i)=>i).filter(i => lanes[i].aisle === home)
+          .concat(lanes.map((L,i)=>i).filter(i => lanes[i].aisle !== home))
+      : lanes.map((L,i)=>i);
+    for (const i of order){
+      if (short <= 0) break;
+      const L = lanes[i];
+      const free = L.cells.filter(c => !plan.slots[c]);
+      if (!free.length) continue;
+      const owner = L.cells.map(c => plan.slots[c]).find(Boolean);
+      if (owner && owner.sku !== it.sku) continue;      // never share a lane
+      let k = 0, rem = Math.min(short, laneCap(free.length, st));
+      short -= rem;
+      if (!plan.slots[L.cells[0]] && st >= 2){ plan.slots[free[k++]] = { sku:it.sku, n:1 }; rem--; }
+      while (rem >= 2 && st >= 2 && k < free.length){ plan.slots[free[k++]] = { sku:it.sku, n:2 }; rem -= 2; }
+      while (rem > 0 && k < free.length){ plan.slots[free[k++]] = { sku:it.sku, n:Math.min(rem, st) }; rem -= Math.min(rem, st); }
+    }
+    if (short > 0) stranded.push({ sku:it.sku, qty:short });
+    added.push(it.sku);
+  });
+
+  plan.unplaced = stranded;
+  plan.grew = added; plan.shrank = trimmed;
+  render();
+  pushCloud(false);
+}
+
+/* ---------- hand edits ---------- */
+function snapshot(){
+  undoStack.push(JSON.stringify({ pins, slots:plan.slots, move }));
+  if (undoStack.length > 30) undoStack.shift();
+  const b = $('undoBtn'); if (b) b.disabled = false;
+}
+function undoEdit(){
+  if (!undoStack.length) return;
+  const prev = JSON.parse(undoStack.pop());
+  pins = prev.pins; plan.slots = prev.slots; if (prev.move) move = prev.move;
+  if (!undoStack.length){ const b = $('undoBtn'); if (b) b.disabled = true; }
+  note('Undo', 'reverted the last change');
+  render(); if ($('m-moveplan').classList.contains('on')) renderMove();
+  pushCloud(false);
+}
+
+/* Empty target moves it. Same item onto same item stacks them, up to whatever
+   that pack will carry. Anything else swaps. */
+function movePallet(from, to){
+  if (!from || !to || from === to) return;
+  const a = plan.slots[from], b = plan.slots[to];
+  if (!a) return;
+  const it = itemBy(a.sku);
+  const name = it ? it.name : a.sku;
+  const cap = it ? maxStack(it) : 2;
+  let how;
+
+  if (b && b.sku === a.sku){
+    if (cap < 2){
+      toast(name + ' is single high — ' + FORMAT[it.fmt].note + '.');
+      return;
+    }
+    if (b.n + a.n > cap){
+      toast(to + ' already holds ' + b.n + '. Two high is the limit here.');
+      return;
+    }
+    snapshot();
+    plan.slots[to] = { sku:a.sku, n:b.n + a.n };
+    delete plan.slots[from];
+    how = 'stacked ' + b.n + '+' + a.n + ' at ' + to;
+  } else if (b){
+    snapshot();
+    plan.slots[from] = b; plan.slots[to] = a;
+    how = 'swapped with ' + (itemBy(b.sku)||{}).name + ' at ' + to;
+  } else {
+    snapshot();
+    delete plan.slots[from]; plan.slots[to] = a;
+    how = from + ' → ' + to;
+  }
+
+  [from, to].forEach(id => { if (plan.slots[id]) pins[id] = { sku:plan.slots[id].sku, n:plan.slots[id].n }; else delete pins[id]; });
+  note('Moved position', name + ' ' + how);
+  toast(name + ' ' + how);
+  render(); pushCloud(false);
+}
+function clearPins(){
+  if (!Object.keys(pins).length){ toast('No hand edits to clear.'); return; }
+  snapshot();
+  const n = Object.keys(pins).length; pins = {};
+  note('Cleared hand edits', n + ' position(s)');
+  runPlan(); toast(n + ' hand edit(s) cleared.');
+}
+
+/* ---------- rendering ---------- */
+function itemBy(sku){ return inv.find(i => i.sku === sku); }
+
+/* The plan is pegged to the highest on hand an item has reached, so if some of
+   it sells before the move finishes the last positions have nothing left to
+   fill them. Those are marked released rather than quietly deleted — the peg
+   is still that item's, so a receipt at the new building fills it straight
+   back in, and until then it reads as floor you can use. */
+let releasedSlots = {};
+function markReleased(){
+  releasedSlots = {};
+  if (!inv.length) return;
+  const lanes = buildLanes();
+  inv.forEach(it => {
+    /* What actually exists right now across both buildings — not the report
+       total, which is only current as of the last upload and would miss a
+       receipt logged since. */
+    const live = (move.oldCases[it.sku] || 0) + (move.newCases[it.sku] || 0);
+    const covered = it.cpp > 0 ? Math.ceil(live / it.cpp) : 0;
+    let seen = 0;
+    lanes.forEach(L => L.cells.forEach(id => {
+      const p = plan.slots[id]; if (!p || p.sku !== it.sku) return;
+      if (seen >= covered) releasedSlots[id] = true;
+      else if (seen + p.n > covered) releasedSlots[id] = 'part';
+      seen += p.n;
+    }));
+  });
+}
+function releasedCount(){ return Object.keys(releasedSlots).length; }
+function tagFor(sku){ return String(sku).slice(-3); }
+
+/* A colour per SKU so a lane is identifiable across the floor. Hues step by
+   the golden angle, so items slotted next to each other never land on
+   neighbouring colours. */
+let skuColor = {}, skuInk = {};
+/* Colour is tied to the item number, not to wherever it happened to land in
+   the build order. That way an item keeps the same colour for good — the
+   plan can be rebuilt, re-slotted or restored from the cloud and the floor
+   still reads the same to anyone who has learned it. */
+function paintSkus(){
+  const order = inv.map(i => i.sku).sort();
+  skuColor = {}; skuInk = {};
+  order.forEach((sku, i) => {
+    const h = (i * 137.508) % 360;
+    const sat = [68, 55, 78][i % 3];
+    const lig = [42, 30, 52][i % 3];
+    skuColor[sku] = 'hsl(' + h.toFixed(1) + ',' + sat + '%,' + lig + '%)';
+    skuInk[sku]   = lig > 46 ? '#12151a' : '#ffffff';
+  });
+}
+const FMT_TAG = { TRAY:'T', BIG:'B', '4PK':'4', CARTON:'C', VAR:'V' };
+
+function render(){ paintSkus(); markReleased(); renderFloor(); renderStats(); renderZones(); paintRebuild(); }
+
+function renderFloor(){
+  const host = $('main');
+  if (!inv.length){ host.innerHTML = '<div class="empty">Drop the sales rate file anywhere to begin.</div>'; return; }
+
+  const floor = document.createElement('div'); floor.className = 'floor';
+
+  (cfg.regions || []).forEach(r => {
+    const el = document.createElement('div');
+    el.className = 'region' + (r.vertical ? ' vert' : '');
+    el.style.top = r.top + '%'; el.style.left = r.left + '%';
+    el.style.width = r.width + '%'; el.style.height = r.height + '%';
+    el.textContent = r.label;
+    floor.appendChild(el);
+  });
+
+  const passes = corridors();
+  cfg.aisles.forEach(a => {
+    const zone = document.createElement('div'); zone.className = 'zone';
+    zone.style.top = a.top + '%'; zone.style.left = a.left + '%';
+    zone.style.width = a.width + '%'; zone.style.height = a.height + '%';
+    zone.style.gridTemplateColumns = 'repeat(' + a.cols + ', 1fr)';
+    zone.style.gridTemplateRows = 'repeat(' + a.rows + ', 1fr)';
+
+    let used = 0;
+    for (let b=1;b<=a.rows;b++){
+      for (let c=1;c<=a.cols;c++){
+        const id = slotId(a.id,c,b);
+        let p = plan.slots[id];
+        const d = document.createElement('div');
+        d.className = 'cell';
+        if (b === a.split + 1 && a.split > 0 && a.split < a.rows) d.classList.add('split');
+        const arrived = move.placed[id];
+        if (p && mode === 'move' && !arrived){
+          /* Pegged but not here yet — show the outline so the map fills in. */
+          d.classList.add('ghost');
+          if (releasedSlots[id]) d.classList.add('released');
+          d.style.borderColor = skuColor[p.sku] || '#555';
+          d.innerHTML = '<span class="tag" style="color:' + (skuColor[p.sku]||'#888') + '">'
+            + tagFor(p.sku) + '</span>';
+          d.onmouseenter = e => showTip(e, id, p, true);
+          d.onmousemove = moveTip; d.onmouseleave = hideTip;
+          zone.appendChild(d); continue;
+        }
+        if (p && mode === 'move') p = arrived;
+        if (p){
+          used++;
+          const it = itemBy(p.sku);
+          d.style.background = skuColor[p.sku] || '#555';
+          d.style.color = skuInk[p.sku] || '#fff';
+          d.innerHTML = '<span class="tag">' + tagFor(p.sku) + '</span>'
+            + (p.n >= 2 ? '<span class="x2">&times;2</span>' : '')
+            + (it ? '<span class="fm">' + (FMT_TAG[it.fmt]||'') + '</span>' : '');
+          if (p.n >= 2) d.classList.add('dbl'); else d.classList.add('face');
+          if (p.frozen) d.classList.add('froze');
+          if (pins[id]) d.classList.add('pinned');
+          if (releasedSlots[id]) d.classList.add(releasedSlots[id] === 'part' ? 'partly' : 'released');
+          if (hoverSku && p.sku !== hoverSku) d.classList.add('dim');
+          d.onmouseenter = e => showTip(e, id, p);
+          d.onmousemove  = moveTip;
+          d.onmouseleave = hideTip;
+          d.onclick = () => { hoverSku = (hoverSku === p.sku) ? null : p.sku; renderFloor(); };
+          if (mode === 'slot'){
+            d.draggable = true;
+            d.addEventListener('dragstart', e => { dragFrom = id; d.classList.add('lift');
+              e.dataTransfer.effectAllowed = 'move'; try{ e.dataTransfer.setData('text/plain', id); }catch(x){} });
+            d.addEventListener('dragend', () => { d.classList.remove('lift'); dragFrom = null;
+              document.querySelectorAll('.cell.target').forEach(c => c.classList.remove('target')); });
+          }
+        }
+        if (mode === 'slot'){
+          d.addEventListener('dragover', e => { if (!dragFrom || dragFrom === id) return;
+            e.preventDefault(); e.dataTransfer.dropEffect = 'move'; d.classList.add('target'); });
+          d.addEventListener('dragleave', () => d.classList.remove('target'));
+          d.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation();
+            d.classList.remove('target'); movePallet(dragFrom, id); dragFrom = null; });
+        }
+        zone.appendChild(d);
+      }
+    }
+
+    const lbl = document.createElement('div'); lbl.className = 'zlabel';
+    lbl.textContent = 'Aisle ' + a.id.replace(/^A/,'');
+    zone.appendChild(lbl);
+    const meta = document.createElement('div'); meta.className = 'zmeta';
+    const serves = passes.filter(c => c.aisles.indexOf(a.id) > -1).map(c => c.pass);
+    meta.textContent = (serves.length ? 'pass ' + serves.join(', ') + ' · ' : '')
+      + used + '/' + (a.cols*a.rows);
+    meta.title = 'Walked on pass ' + serves.join(' and ') + ' of the pick path';
+    zone.appendChild(meta);
+    floor.appendChild(zone);
+  });
+
+  if (showPath) floor.appendChild(pathOverlay());
+
+  host.innerHTML = ''; host.appendChild(floor);
+}
+
+/* The route drawn over the map: into each aisle in walk order, along its
+   length, then across to the next. Start is receiving, finish is the dock. */
+function pathOverlay(){
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS,'svg');
+  svg.setAttribute('class','pathsvg');
+  svg.setAttribute('viewBox','0 0 100 100');
+  svg.setAttribute('preserveAspectRatio','none');
+
+  const mk = (t,a) => { const e = document.createElementNS(NS,t);
+    Object.keys(a).forEach(k => e.setAttribute(k,a[k])); return e; };
+  const head = mk('marker',{ id:'pathArrow', viewBox:'0 0 10 10', refX:7, refY:5,
+    markerWidth:5, markerHeight:5, orient:'auto-start-reverse' });
+  head.appendChild(mk('path',{ d:'M1 1L9 5L1 9z', fill:'var(--accent)' }));
+  const defs = mk('defs',{}); defs.appendChild(head); svg.appendChild(defs);
+
+  const rec = (cfg.regions||[]).find(r => /receiv/i.test(r.label));
+  const dock = (cfg.regions||[]).find(r => /loading zone/i.test(r.label) && !/no /i.test(r.label));
+  const pts = [];
+  if (rec) pts.push([rec.left + rec.width/2, rec.top + rec.height/2]);
+
+  const stops = [];
+  const cs = corridors();
+  cs.forEach(c => {
+    const pad = 2.5;
+    const lo = Math.min(...c.lanes.map(f=>f.x)) - pad;
+    const hi = Math.max(...c.lanes.map(f=>f.x)) + pad;
+    const inX  = c.dir === 'lr' ? lo : hi;
+    const outX = c.dir === 'lr' ? hi : lo;
+    pts.push([inX, c.y], [outX, c.y]);
+    stops.push({ x:inX, y:c.y, n:c.pass });
+  });
+  if (dock) pts.push([dock.left + dock.width/2, dock.top + dock.height/2]);
+
+  svg.appendChild(mk('polyline',{ points:pts.map(p=>p.join(',')).join(' '),
+    fill:'none', stroke:'var(--accent)', 'stroke-width':2.5, 'stroke-linejoin':'round',
+    'stroke-linecap':'round', 'vector-effect':'non-scaling-stroke',
+    opacity:.9, 'marker-end':'url(#pathArrow)' }));
+
+  stops.forEach(s2 => {
+    svg.appendChild(mk('circle',{ cx:s2.x, cy:s2.y, r:1.4, fill:'var(--accent)',
+      stroke:'#191c22', 'stroke-width':1.2, 'vector-effect':'non-scaling-stroke' }));
+  });
+  return svg;
+}
+
+function showTip(e, id, p, waiting){
+  const it = itemBy(p.sku); const t = $('tip');
+  const st = it ? maxStack(it) : 1;
+  t.innerHTML = '<b>' + (it ? it.name : p.sku) + '</b><br>'
+    + (waiting ? '<span class="r" style="color:var(--accent)">pegged here · not moved in yet</span><br>' : '')
+    + (releasedSlots[id] === true ? '<span class="r" style="color:#e2b44a">position open · stock sold before the move</span><br>'
+       : releasedSlots[id] === 'part' ? '<span class="r" style="color:#e2b44a">half of this position is open now</span><br>' : '')
+    + '<span class="r">' + id + ' · ' + (p.n>=2 ? 'backstock ×2' : 'pick face') + '</span><br>'
+    + (it ? ('<span class="r">' + FORMAT[it.fmt].label + ' · ' + (it.size||'?') + 'oz · ' + it.cpp + ' cs/pal</span><br>'
+      + '<span class="r">' + it.daily.toFixed(1) + ' cs/day · ' + it.pallets + ' pallets</span><br>'
+      + '<span class="r">' + (st>=2 ? loadPerCase(it.size) + ' lb per case when stacked'
+        : 'single high — ' + stackReason(it)) + '</span>') : '');
+  t.style.display = 'block'; moveTip(e);
+}
+function moveTip(e){
+  const t = $('tip');
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + 260 > innerWidth) x = e.clientX - 268;
+  if (y + 110 > innerHeight) y = e.clientY - 116;
+  t.style.left = x + 'px'; t.style.top = y + 'px';
+}
+function hideTip(){ $('tip').style.display = 'none'; }
+
+function renderStats(){
+  if (mode === 'move'){
+    const onMap = Object.values(move.placed).reduce((s,p)=>s+p.n,0);
+    const peg = Object.values(plan.slots).reduce((s,p)=>s+p.n,0);
+    const oc = inv.reduce((s,i)=>s+oldOf(i.sku),0), nc = inv.reduce((s,i)=>s+newOf(i.sku),0);
+    const risk = movePlan().filter(r=>r.status==='AT RISK').length;
+    $('stats').innerHTML =
+      s2(onMap+'/'+peg,'Pallets moved') + s2(Math.round(100*onMap/(peg||1))+'%','Complete') +
+      s2(Math.round(oc).toLocaleString(),'Cases old') + s2(Math.round(nc).toLocaleString(),'Cases new') +
+      s2(movePlan().reduce((s,r)=>s+r.movPal,0),'Safe to move') + s2(risk,'At risk', risk>0) +
+      '<div class="stat wide"><div class="n">Day ' + move.day + ' / ' + move.daysToFlip
+        + '</div><div class="l">Advances on its own</div></div>';
+    function s2(n,l,bad){ return '<div class="stat'+(bad?' bad':'')+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'; }
+    return;
+  }
+  const lanes = buildLanes();
+  const usedLanes = lanes.filter(L => L.cells.some(c => plan.slots[c])).length;
+  const cells = Object.keys(plan.slots).length;
+  const totalCells = cfg.aisles.reduce((s,a)=>s+a.cols*a.rows,0);
+  const pal = Object.values(plan.slots).reduce((s,p)=>s+p.n,0);
+  const faces = Object.values(plan.slots).filter(p=>p.n===1).length;
+  const un = plan.unplaced.reduce((s,u)=>s+u.qty,0);
+  $('stats').innerHTML =
+    st(pal,'Pallets') + st(faces,'Pick faces') +
+    st(usedLanes + '/' + lanes.length,'Lanes') + st(cells + '/' + totalCells,'Positions') +
+    st(inv.length,'SKUs') + st(un,'Unplaced', un>0) +
+    st(Object.keys(pins).length,'Hand placed') + st(releasedCount(),'Freed up') +
+    '<div class="stat wide"><div class="n">' + Math.round(100*cells/(totalCells||1)) + '%</div><div class="l">Floor used</div></div>'
+    + '<div class="stat wide"><div class="n" style="font-size:11px;font-weight:400;color:var(--ink-soft)">'
+    + (plan.builtOn ? 'Laid out ' + new Date(plan.builtOn).toLocaleDateString() : 'Not laid out yet')
+    + '</div><div class="l">Saves as you go · uploads top up</div></div>';
+  function st(n,l,bad){ return '<div class="stat' + (bad?' bad':'') + '"><div class="n">' + n + '</div><div class="l">' + l + '</div></div>'; }
+}
+
+function renderZones(){
+  const host = $('zonelist'); host.innerHTML = '';
+  const cs = corridors();
+  if (!cs.length){ host.innerHTML = '<div style="font-size:11px;color:var(--ink-dim)">No aisles configured.</div>'; return; }
+  const totalVol = inv.reduce((s,i)=>s+i.daily,0) || 1;
+  cs.forEach(c => {
+    let vol = 0;
+    c.lanes.forEach(L => L.cells.forEach(id => { const p = plan.slots[id]; if(!p) return;
+      const it = itemBy(p.sku); if(!it||!it.pallets) return; vol += it.daily * (p.n/it.pallets); }));
+    const row = document.createElement('div'); row.className = 'zrow';
+    row.innerHTML = '<span class="grip">' + c.pass + '</span>'
+      + '<span class="nm">' + (c.dir==='lr'?'→':'←') + ' Aisle '
+      + c.aisles.map(a=>a.replace(/^A/,'')).sort().join(', ') + '</span>'
+      + '<span class="mini">' + Math.round(100*vol/totalVol) + '% vol</span>';
+    if (!c.bothSides) row.style.opacity = '.72';
+    const u = document.createElement('button'); u.textContent='↑'; u.title='Earlier in the route';
+    u.onclick = () => movePass(c.band, -1);
+    const d = document.createElement('button'); d.textContent='↓'; d.title='Later in the route';
+    d.onclick = () => movePass(c.band, 1);
+    row.appendChild(u); row.appendChild(d); host.appendChild(row);
+  });
+  const n = document.createElement('div');
+  n.style.cssText='font-size:10px;color:var(--ink-dim);margin-top:7px;line-height:1.5';
+  const dead = cs.filter(c=>!c.bothSides).length;
+  n.innerHTML = 'Each pass walks one corridor and picks the faces on both sides of it.'
+    + (dead ? '<br>Dimmed passes have product on one side only — you walk in and back out, so they earn the slow movers.' : '');
+  host.appendChild(n);
+}
+
+function movePass(band, delta){
+  const cur = corridors().map(c => c.band);
+  const i = cur.indexOf(band);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= cur.length) return;
+  [cur[i], cur[j]] = [cur[j], cur[i]];
+  cfg.passOrder = cur;
+  runPlan(); renderSetup();
+}
+function autoPassOrder(){ cfg.passOrder = null; runPlan(); renderSetup(); toast('Route ranked by corridor productivity.'); }
+
+function togglePath(){
+  showPath = !showPath;
+  $('pathBtn').classList.toggle('primary', showPath);
+  $('pathBtn').textContent = showPath ? 'Hide pick path' : 'Show pick path';
+  renderFloor();
+}
+/* A rebuild reflows everything the allocator owns. Hand-placed positions are
+   kept, so warn before wiping them rather than doing it silently. */
+/* The button reads differently depending on whether pressing it would create a
+   layout or replace one — they are very different acts and used to share a name
+   that sounded like a save. Nothing here saves; everything saves by itself. */
+function paintRebuild(){
+  const b = $('rebuildBtn'); if (!b) return;
+  const live = Object.keys(plan.slots).length > 0;
+  b.textContent = live ? 'Re-slot everything' : 'Build plan';
+  b.classList.toggle('danger', live);
+  b.classList.toggle('primary', !live);
+  b.title = live
+    ? 'Throws away the current layout and works out a new one. Every item can move. This is not a save — everything saves on its own.'
+    : 'Work out where everything goes.';
+}
+function rebuild(){
+  const n = Object.keys(pins).length;
+  const live = Object.keys(plan.slots).length;
+  if (live && !confirm('Re-slot everything?\n\nThis throws away the current layout and works out a new one — every item can end up somewhere different, for everyone on this plan.\n\nThis is not a save. Your work is already saved.'
+      + (n ? '\n\n' + n + ' hand-placed position(s) will be kept.' : ''))) return;
+  runPlan();
+  toast(live ? 'Warehouse re-slotted' + (n ? ' — ' + n + ' hand-placed position(s) kept.' : '.') : 'Plan built.');
+}
+
+/* ---------- setup: aisles, path, stacking ---------- */
+function renderSetup(){ renderLayout(); renderPath(); renderStack(); $('cfg-reserve').value = cfg.reserve; $('cfg-dir').value = cfg.startDir;
+  $('cfg-gap').value = cfg.corridorGap; $('cfg-rank').value = cfg.rank || 'velocity'; }
+
+function renderLayout(){
+  const host = $('layoutRows'); host.innerHTML = '';
+  cfg.aisles.forEach((a,i) => {
+    const d = document.createElement('div');
+    d.style.cssText = 'border:1px solid var(--line);border-radius:5px;padding:10px;margin-bottom:9px';
+    d.innerHTML =
+      '<div class="row" style="margin-bottom:7px">' +
+      '<div><label class="f">Aisle</label><input type="text" value="'+a.id+'" onchange="setAisle('+i+',\'id\',this.value)"></div>' +
+      '<div><label class="f">Lanes across</label><input type="number" min="1" value="'+a.cols+'" onchange="setAisle('+i+',\'cols\',this.value)"></div>' +
+      '<div><label class="f">Positions deep</label><input type="number" min="1" value="'+a.rows+'" onchange="setAisle('+i+',\'rows\',this.value)"></div>' +
+      '<div><label class="f">Split at</label><input type="number" min="0" value="'+a.split+'" onchange="setAisle('+i+',\'split\',this.value)"></div>' +
+      '<div style="flex:0 0 auto;min-width:0;align-self:flex-end"><button class="tbtn ghost" onclick="delAisle('+i+')">Remove</button></div>' +
+      '</div><div class="row" style="margin-bottom:0">' +
+      '<div><label class="f">From top %</label><input type="number" min="0" max="100" value="'+a.top+'" onchange="setAisle('+i+',\'top\',this.value)"></div>' +
+      '<div><label class="f">From left %</label><input type="number" min="0" max="100" value="'+a.left+'" onchange="setAisle('+i+',\'left\',this.value)"></div>' +
+      '<div><label class="f">Width %</label><input type="number" min="1" max="100" value="'+a.width+'" onchange="setAisle('+i+',\'width\',this.value)"></div>' +
+      '<div><label class="f">Height %</label><input type="number" min="1" max="100" value="'+a.height+'" onchange="setAisle('+i+',\'height\',this.value)"></div>' +
+      '</div>';
+    host.appendChild(d);
+  });
+  const tot = cfg.aisles.reduce((s,a)=>s+a.cols*a.rows,0);
+  const ln  = buildLanes().length;
+  const need = inv.filter(i=>i.pallets>0).length;
+  const d = document.createElement('div'); d.className = 'note';
+  d.innerHTML = '<b>' + ln + ' lanes</b> and <b>' + tot + ' positions</b>'
+    + (need ? ' against ' + need + ' SKUs needing a home.' : '.')
+    + (need && ln < need ? ' <span style="color:var(--warn)">Not enough lanes — raise the split or add an aisle.</span>' : '');
+  host.appendChild(d);
+}
+const PLACE = ['top','left','width','height'];
+function setAisle(i,k,v){
+  if (k === 'id') cfg.aisles[i].id = String(v).trim().toUpperCase() || cfg.aisles[i].id;
+  else if (PLACE.indexOf(k) > -1) cfg.aisles[i][k] = Math.max(0, Math.min(100, parseFloat(v)||0));
+  else cfg.aisles[i][k] = Math.max(k==='split'?0:1, parseInt(v)||0);
+  runPlan(); renderSetup();
+}
+function addAisle(){
+  let n = 1; while (cfg.aisles.some(a=>a.id==='A'+n)) n++;
+  cfg.aisles.push({ id:'A'+n, cols:8, rows:5, split:3, top:5, left:21, width:22, height:14 });
+  runPlan(); renderSetup();
+}
+function delAisle(i){
+  cfg.aisles.splice(i,1);
+  runPlan(); renderSetup();
+}
+
+function renderPath(){
+  const host = $('pathRows'); host.innerHTML = '';
+  const cs = corridors();
+  const totalVol = inv.reduce((s,i)=>s+i.daily,0) || 1;
+  let h = '<table><thead><tr><th>Pass</th><th class="l">Corridor</th><th class="l">Walk</th>'
+        + '<th>Faces</th><th>Reach</th><th>Yield</th><th>Volume</th><th></th></tr></thead><tbody>';
+  cs.forEach(c => {
+    let vol = 0;
+    c.lanes.forEach(L => L.cells.forEach(id => { const p = plan.slots[id]; if(!p) return;
+      const it = itemBy(p.sku); if(!it||!it.pallets) return; vol += it.daily * (p.n/it.pallets); }));
+    h += '<tr><td>' + c.pass + '</td>'
+      + '<td class="l">Aisle ' + c.aisles.map(a=>a.replace(/^A/,'')).sort().join(', ') + '</td>'
+      + '<td class="l">' + (c.dir==='lr'?'left to right':'right to left') + '</td>'
+      + '<td>' + c.lanes.length + '</td>'
+      + '<td class="l">' + (c.bothSides
+          ? '<span class="pill tray">both sides</span>'
+          : '<span class="pill no">one side</span>') + '</td>'
+      + '<td>' + c.yield.toFixed(2) + '</td>'
+      + '<td>' + Math.round(100*vol/totalVol) + '%</td>'
+      + '<td class="l"><button class="tbtn ghost" style="padding:2px 6px" onclick="movePass('+c.band+',-1)">↑</button>'
+      + '<button class="tbtn ghost" style="padding:2px 6px" onclick="movePass('+c.band+',1)">↓</button></td></tr>';
+  });
+  h += '</tbody></table><div style="margin-top:8px"><button class="tbtn" onclick="autoPassOrder()">Rank by productivity</button></div>';
+  host.innerHTML = h;
+  const f = $('fmtRows'); f.innerHTML = '';
+  cfg.fmtOrder.forEach((k,i) => {
+    const r = document.createElement('div'); r.className = 'zrow';
+    r.innerHTML = '<span class="grip">'+(i+1)+'</span><span class="nm">'+FORMAT[k].label
+      + '</span><span class="mini">'+FORMAT[k].note+'</span>';
+    const u = document.createElement('button'); u.textContent='↑';
+    u.onclick=()=>{ if(i>0){ const w=[...cfg.fmtOrder]; [w[i-1],w[i]]=[w[i],w[i-1]]; cfg.fmtOrder=w; runPlan(); renderSetup(); } };
+    const d = document.createElement('button'); d.textContent='↓';
+    d.onclick=()=>{ if(i<cfg.fmtOrder.length-1){ const w=[...cfg.fmtOrder]; [w[i+1],w[i]]=[w[i],w[i+1]]; cfg.fmtOrder=w; runPlan(); renderSetup(); } };
+    r.appendChild(u); r.appendChild(d); f.appendChild(r);
+  });
+}
+function readCfg(){
+  cfg.reserve = Math.max(0, Math.min(50, parseInt($('cfg-reserve').value)||0));
+  cfg.startDir = $('cfg-dir').value;
+  cfg.corridorGap = Math.max(1, Math.min(40, parseInt($('cfg-gap').value)||12));
+  cfg.rank = $('cfg-rank').value;
+  runPlan(); renderSetup();
+}
+
+function renderStack(){
+  const host = $('stackRows');
+  let h = '<table><thead><tr><th class="l">Format</th><th class="l">Why</th><th>Stack</th></tr></thead><tbody>';
+  Object.keys(FORMAT).forEach(k => {
+    h += '<tr><td class="l"><span class="pill '+FORMAT[k].css+'">'+FORMAT[k].label+'</span></td>'
+      + '<td class="l" style="white-space:normal;color:var(--ink-soft)">'+FORMAT[k].note+'</td>'
+      + '<td><select onchange="cfg.stackBy[\''+k+'\']=+this.value; runPlan(); renderStack();" style="width:auto">'
+      + '<option value="2"'+(cfg.stackBy[k]===2?' selected':'')+'>2 high</option>'
+      + '<option value="1"'+(cfg.stackBy[k]===1?' selected':'')+'>1 high</option></select></td></tr>';
+  });
+  h += '</tbody></table>';
+  h += '<div class="note" style="margin:14px 0 8px">Two rules, and the stricter one applies. '
+    + 'Load per case is what the bottom pallet carries; slenderness is how tall a case stands against its own '
+    + 'footprint. A squat case crushes before it topples, a tall narrow one topples first — past about 0.70 '
+    + 'the stack leans no matter how light it is.</div>';
+  h += '<table><thead><tr><th class="l">Can</th><th>Case ht</th><th>Per layer</th><th>Load/case</th>'
+    + '<th>Slenderness</th><th>2-high</th><th>Stack</th></tr></thead><tbody>';
+  Object.keys(SIZE).forEach(z => {
+    const sl = slenderness(z);
+    h += '<tr><td class="l">' + z + 'oz</td><td>' + SIZE[z].caseHt.toFixed(2) + '&Prime;</td>'
+      + '<td>' + SIZE[z].perLayer + '</td><td>' + loadPerCase(z) + ' lb</td>'
+      + '<td' + (sl > 0.7 ? ' style="color:var(--accent)" title="tall against its footprint"' : '') + '>'
+      + sl.toFixed(2) + '</td>'
+      + '<td>' + stackHeight(z).toFixed(0) + '&Prime;</td>'
+      + '<td><select onchange="cfg.stackBySize[\'' + z + '\']=+this.value; runPlan(); renderStack(); renderSkus();" style="width:auto">'
+      + '<option value="2"' + (cfg.stackBySize[z]===2?' selected':'') + '>2 high</option>'
+      + '<option value="1"' + (cfg.stackBySize[z]===1?' selected':'') + '>1 high</option></select></td></tr>';
+  });
+  h += '</tbody></table>';
+  host.innerHTML = h;
+}
+
+/* ---------- SKU table ---------- */
+function renderSkus(){
+  const q = ($('skuFind').value||'').toLowerCase();
+  const rows = inv.filter(i => !q || i.name.toLowerCase().includes(q) || i.sku.includes(q))
+                  .sort((a,b) => b.daily - a.daily);
+  $('skuCount').textContent = rows.length + ' of ' + inv.length;
+  let h = '<thead><tr><th class="l">Item</th><th class="l">ID</th><th class="l">Format</th><th>Size</th>'
+        + '<th>Cs/pal</th><th>On hand</th><th>Cs/day</th><th>Pallets</th><th>Load</th><th class="l">Stack</th><th class="l">Where</th></tr></thead><tbody>';
+  rows.forEach(i => {
+    const st = maxStack(i);
+    const where = Object.keys(plan.slots).filter(id => plan.slots[id].sku === i.sku);
+    const un = plan.unplaced.find(u => u.sku === i.sku);
+    h += '<tr><td class="l">'+i.name+'</td><td class="l">'+i.sku+'</td>'
+      + '<td class="l"><span class="pill '+FORMAT[i.fmt].css+'">'+FORMAT[i.fmt].label+'</span></td>'
+      + '<td>'+(i.size||'?')+'</td>'
+      + '<td'+(i.cppSrc!=='report'?' title="filled from the can size rule" style="color:var(--accent)"':'')+'>'+i.cpp+'</td>'
+      + '<td>'+i.cases.toLocaleString()+'</td><td>'+i.daily.toFixed(1)+'</td><td>'+i.pallets+'</td>'
+      + '<td>'+(st>=2 ? loadPerCase(i.size)+' lb' : '—')+'</td>'
+      + '<td class="l"><select onchange="setStack(\''+i.sku+'\',this.value)" style="width:auto" title="'+stackReason(i)+'">'
+      + '<option value=""'+(i.stackOverride==null?' selected':'')+'>auto ('+Math.min(cfg.stackBy[i.fmt]||1,(cfg.stackBySize&&i.size&&cfg.stackBySize[i.size]!=null)?cfg.stackBySize[i.size]:2)+')</option>'
+      + '<option value="2"'+(i.stackOverride===2?' selected':'')+'>2 high</option>'
+      + '<option value="1"'+(i.stackOverride===1?' selected':'')+'>1 high</option></select></td>'
+      + '<td class="l">'+(where.length ? where[0] + (where.length>1 ? ' +'+(where.length-1) : '')
+        : (un ? '<span class="pill no">unplaced</span>' : '—'))+'</td></tr>';
+  });
+  $('skuTable').innerHTML = h + '</tbody>';
+}
+function setStack(sku,v){
+  const i = itemBy(sku); if(!i) return;
+  i.stackOverride = v === '' ? null : +v;
+  note('Stack override', i.name + ' → ' + (v===''?'auto':v+' high'));
+  runPlan(); renderSkus();
+}
+
+/* ---------- checks ---------- */
+function renderChecks(){
+  const out = [];
+  if (plan.unplaced.length){
+    out.push(block('No slot found', plan.unplaced.map(u => {
+      const i = itemBy(u.sku); return (i?i.name:u.sku) + ' — ' + u.qty + ' pallet(s)';
+    }), 'Raise the split on an aisle, lower the reserve, or add lanes.'));
+  }
+  if ((plan.offZone||[]).length){
+    const seenz = {};
+    (plan.offZone||[]).forEach(o => { const i = itemBy(o.sku);
+      const k = (i?i.name:o.sku) + ' → aisle ' + o.lane.replace(/^A/,''); seenz[k] = (seenz[k]||0)+1; });
+    out.push(block('Sitting outside its pick-path zone', Object.keys(seenz).map(k => k + ' (' + seenz[k] + ' lane)'),
+      'The building ran out of lanes in the right stretch of the walk, so these landed as late as it could manage. Adding lanes or lowering the reserve puts them back.'));
+  }
+  if (cfg.rank !== 'format'){
+    const seq = []; corridors().forEach(c => c.lanes.forEach(L => seq.push({L,c})));
+    const soft = [];
+    seq.forEach((e,i) => {
+      const p = plan.slots[e.L.cells[0]]; if (!p) return;
+      const it = itemBy(p.sku); if (!it || maxStack(it) >= 2) return;
+      let after = 0;
+      for (let j=i+1;j<seq.length;j++){
+        const q = plan.slots[seq[j].L.cells[0]];
+        if (q && itemBy(q.sku) && maxStack(itemBy(q.sku)) >= 2) after++;
+      }
+      if (after > 0) soft.push(it.name + ' in pass ' + e.c.pass + ' — ' + after
+        + ' stackable face(s) still ahead on the route');
+    });
+    if (soft.length) out.push(block('Crushables picked before load bearers', soft,
+      'Velocity is ranking the corridors, so a carton that moves well sits early on the route and a slower tray comes later. Switch ranking to stackability under Layout and path if the pallet build matters more than the walk.'));
+  }
+
+  if ((plan.splitAisle||[]).length){
+    const seen = {};
+    plan.splitAisle.forEach(x => { const i = itemBy(x.sku);
+      seen[(i?i.name:x.sku) + ' — aisle ' + x.from.replace(/^A/,'') + ' and ' + x.to.replace(/^A/,'')] = 1; });
+    out.push(block('Same item in two aisles', Object.keys(seen),
+      'The building ran out of room in that item\'s own aisle. It burns a pick face in each place and gives pickers two spots to look. Lowering the reserve or adding lanes usually clears it.'));
+  }
+
+  if ((move.reconcile||[]).length){
+    out.push(block('Logged into the new building than the report says exists',
+      move.reconcile.map(r => { const i = itemBy(r.sku);
+        return (i?i.name:r.sku) + ' — report ' + Math.round(r.total).toLocaleString()
+          + ' cs, logged across ' + Math.round(r.logged).toLocaleString() + ' cs'; }),
+      'The report is one total across both buildings, so this cannot both be true. Usually a transfer logged twice, or logged as a transfer when it was a receipt. The report was taken as correct and the old building set to zero for these.'));
+  }
+
+  if ((move.drops||[]).length){
+    out.push(block('Fell much faster than it sells', move.drops
+      .sort((a,b)=>b.days-a.days).map(dr => { const i = itemBy(dr.sku);
+        return (i?i.name:dr.sku) + ' — down ' + Math.round(dr.fell).toLocaleString()
+          + ' cs, about ' + dr.days.toFixed(0) + ' days at ' + dr.rate.toFixed(1) + ' cs/day'; }),
+      'Too big to be sales. During the move the usual cause is stock that went across without being logged — the report shows it gone from the total while the map still shows it in the old building. Worth a look before it compounds.'));
+  }
+  const neg = rateRows ? rateRows.filter(r => r.raw != null && r.raw < 0) : [];
+  if (neg.length) out.push(block('Negative on hand in the report',
+    neg.map(r => r.name + ' — ' + r.raw + ' cases'),
+    'The system thinks more has gone out than came in. Treated as zero here, so these get no slot until the count is corrected.'));
+
+  const broken = [];
+  walkOrder().forEach(aid => {
+    const a = cfg.aisles.find(x => x.id === aid); if (!a) return;
+    for (let c=1;c<=a.cols;c++){
+      [['north',1,a.split,1],['south',a.rows,a.split+1,-1]].forEach(([face,from,to,step]) => {
+        const seq = [];
+        for (let b=from; step>0 ? b<=to : b>=to; b+=step){ const p = plan.slots[slotId(a.id,c,b)]; if (p) seq.push({b,p}); }
+        if (!seq.length) return;
+        const names = new Set(seq.map(x => x.p.sku));
+        if (names.size > 1)
+          broken.push('Aisle ' + a.id.replace(/^A/,'') + ' lane ' + c + ' ' + face + ' face holds '
+            + [...names].map(k => { const it = itemBy(k); return it?it.name:k; }).join(' behind '));
+        else if (seq[0].b !== from)
+          broken.push('Aisle ' + a.id.replace(/^A/,'') + ' lane ' + c + ' ' + face
+            + ' face is empty with stock behind it');
+      });
+    }
+  });
+  if (broken.length) out.push(block('Lane problems', broken,
+    'A pick face has something different stacked behind it, or product sits behind an empty face. Usually the result of a hand edit — drag it back or rebuild the plan.'));
+
+  const conflict = inv.filter(i => i.reportCpp > 0 && i.ruleCpp > 0 && i.reportCpp !== i.ruleCpp);
+  if (conflict.length){
+    out.push(block('Cases per pallet disagrees with the can size', conflict.map(i =>
+      i.name + ' — report says ' + i.reportCpp + ', ' + i.size + 'oz rule says ' + i.ruleCpp),
+      'The report value is the one being used.'));
+  }
+  const filled = inv.filter(i => i.cppSrc === 'size rule');
+  if (filled.length) out.push(block('Cases per pallet filled from the can size', filled.map(i => i.name + ' → ' + i.cpp),
+    'Not in the pallet table. Drop in a fresh EBMG export to pick up the real value.'));
+  const norate = inv.filter(i => i.daily === 0 && i.pallets > 0);
+  if (norate.length) out.push(block('Stock on hand but no sales rate', norate.map(i => i.name + ' — ' + i.pallets + ' pallet(s)'), 'They still get slotted, just at the back of their format.'));
+  const nosize = inv.filter(i => !i.size);
+  if (nosize.length) out.push(block('Can size not recognised', nosize.map(i => i.name), 'Cases per pallet falls back to the report value only.'));
+
+  const lanes = buildLanes();
+  const need = inv.filter(i=>i.pallets>0).length;
+  const cap = corridors().map(c => 'Pass ' + c.pass + ' — ' + (c.dir==='lr'?'left to right':'right to left')
+    + ', ' + c.lanes.length + ' faces across aisle '
+    + c.aisles.map(x=>x.replace(/^A/,'')).join(', '));
+  cfg.aisles.forEach(a => {
+    const ln = lanes.filter(L=>L.aisle===a.id).length;
+    let used = 0; for(let b=1;b<=a.rows;b++) for(let c=1;c<=a.cols;c++) if(plan.slots[slotId(a.id,c,b)]) used++;
+    cap.push('Aisle ' + a.id.replace(/^A/,'') + ' — ' + ln + ' lanes, ' + used + '/' + (a.cols*a.rows) + ' positions used');
+  });
+  out.push(block('Capacity', cap.concat([lanes.length + ' lanes total against ' + need + ' SKUs']), ''));
+
+  $('checksBody').innerHTML = out.join('') || '<div class="empty">Nothing to flag.</div>';
+  function block(title, items, hint){
+    return '<h2 style="margin-top:16px">' + title + ' <span style="color:var(--accent)">(' + items.length + ')</span></h2>'
+      + (hint ? '<div class="note">' + hint + '</div>' : '')
+      + '<div class="scroll" style="max-height:220px"><table><tbody>'
+      + items.map(t => '<tr><td class="l" style="white-space:normal">' + t + '</td></tr>').join('')
+      + '</tbody></table></div>';
+  }
+}
+
+/* ---------- the move ---------- */
+function setMode(m){
+  mode = m;
+  document.body.classList.toggle('movemode', m === 'move');
+  $('m-slot').classList.toggle('on', m === 'slot');
+  $('m-move').classList.toggle('on', m === 'move');
+  renderFloor(); renderStats();
+}
+function rateOf(i){ return move.rate[i.sku] != null ? move.rate[i.sku] : (i.daily || 0); }
+function oldOf(sku){ return move.oldCases[sku] || 0; }
+function newOf(sku){ return move.newCases[sku] || 0; }
+
+/* Keep back enough to trade out of the old building until the flip, plus a
+   buffer. Everything above that floor is safe to send across. */
+function movePlan(){
+  const horizon = (+move.daysToFlip || 0) + (+move.safety || 0);
+  return inv.filter(i => i.pallets > 0 || oldOf(i.sku) > 0 || newOf(i.sku) > 0).map(i => {
+    const cd = rateOf(i);
+    const oc = oldOf(i.sku), nc = newOf(i.sku);
+    const floor = cd > 0 ? cd * horizon : 0;
+    const surplus = oc - floor;
+    const movPal = surplus > 0 ? Math.floor(surplus / i.cpp) : 0;
+    const oldDos = cd > 0 ? oc / cd : (oc > 0 ? (+move.assumedDos||30) : 0);
+    const newDos = cd > 0 ? nc / cd : 0;
+    let status;
+    if (cd > 0 && oc < floor && oc > 0) status = 'AT RISK';
+    else if (movPal >= 1) status = 'MOVE';
+    else status = 'HOLD';
+    return { i, cd, oc, nc, floor, surplus, movPal,
+      movCases: Math.max(0, Math.round(surplus)), oldDos, newDos, status,
+      partial: surplus > 0 && movPal === 0 };
+  }).sort((a,b) => {
+    const rank = { 'MOVE':0, 'HOLD':1, 'AT RISK':2 };
+    return rank[a.status] - rank[b.status] || b.oldDos - a.oldDos || a.i.daily - b.i.daily;
+  });
+}
+
+/* Where an item is pegged, in pick-path order, so it fills its own slots. */
+function pegged(sku){
+  const out = [];
+  buildLanes().forEach(L => L.cells.forEach(id => {
+    if (plan.slots[id] && plan.slots[id].sku === sku) out.push(id);
+  }));
+  return out;
+}
+function placedPallets(sku){
+  return Object.values(move.placed).filter(p => p.sku === sku).reduce((s,p)=>s+p.n,0);
+}
+/* Fill an item's pegged positions as product arrives. */
+function fillPegs(sku, pallets){
+  let left = pallets, put = 0;
+  for (const id of pegged(sku)){
+    if (left <= 0) break;
+    if (move.placed[id]) continue;
+    const want = plan.slots[id].n;
+    const take = Math.min(want, left);
+    move.placed[id] = { sku, n:take };
+    left -= take; put += take;
+  }
+  return { put, short:left };
+}
+function emptyPegs(sku, pallets){
+  let left = pallets, took = 0;
+  const mine = pegged(sku).filter(id => move.placed[id]).reverse();  // last in, first out
+  for (const id of mine){
+    if (left <= 0) break;
+    const have = move.placed[id].n;
+    if (have <= left){ left -= have; took += have; delete move.placed[id]; }
+    else { move.placed[id].n = have - left; took += left; left = 0; }
+  }
+  return { took, short:left };
+}
+
+function logInbound(){ doLog('receipt'); }
+function logTransfer(){ doLog('transfer'); }
+function logSendBack(){ doLog('back'); }
+
+function doLog(kind){
+  const f = { receipt:'in', transfer:'tr', back:'bk' }[kind];
+  const sku = ($('mv-'+f+'-sku').value||'').trim();
+  const it = itemBy(sku);
+  if (!it){ toast('No item with that ID in the plan.'); return; }
+  let cs = +$('mv-'+f+'-cases').value || 0;
+  let pl = +$('mv-'+f+'-pal').value || 0;
+  if (!cs && !pl){ toast('Enter cases or pallets.'); return; }
+  if (!pl) pl = Math.ceil(cs / it.cpp);
+  if (!cs) cs = pl * it.cpp;
+
+  snapshot();
+  if (kind === 'back'){
+    if (newOf(sku) < cs){ toast('Only ' + newOf(sku).toLocaleString() + ' cases of that are in the new building.'); undoStack.pop(); return; }
+    move.newCases[sku] = newOf(sku) - cs;
+    move.oldCases[sku] = oldOf(sku) + cs;
+    const r = emptyPegs(sku, pl);
+    note('Sent back', it.name + ' — ' + pl + ' pallet(s), ' + cs.toLocaleString() + ' cs to the old building');
+    toast('Sent back ' + r.took + ' pallet(s) of ' + it.name + '.');
+  } else {
+    if (kind === 'transfer'){
+      if (oldOf(sku) < cs){ toast('Only ' + oldOf(sku).toLocaleString() + ' cases of that left in the old building.'); undoStack.pop(); return; }
+      move.oldCases[sku] = oldOf(sku) - cs;
+    }
+    move.newCases[sku] = newOf(sku) + cs;
+    const r = fillPegs(sku, pl);
+    note(kind === 'transfer' ? 'Moved across' : 'Received new',
+      it.name + ' — ' + pl + ' pallet(s), ' + cs.toLocaleString() + ' cs');
+    if (r.short > 0) toast('Logged. ' + r.short + ' pallet(s) have no pegged position — rebuild the plan to peg them.');
+    else toast('Placed ' + r.put + ' pallet(s) of ' + it.name + '.');
+  }
+  ['sku','cases','pal'].forEach(k => $('mv-'+f+'-'+k).value = '');
+  renderMove(); render(); pushCloud(false);
+}
+
+/* Sales keep coming out of the old building whether or not anyone opens this.
+   Rather than a button, the app notices the date has changed since it last
+   depleted and catches up. `lastDay` is shared, so it only happens once no
+   matter how many people are in the plan. */
+function catchUpDays(quiet){
+  if (!inv.length) return 0;
+  const now = today();
+  if (!move.lastDay){ move.lastDay = now; return 0; }
+  let gap = dayGap(move.lastDay, now);
+  if (gap <= 0) return 0;
+  if (gap > 30) gap = 30;                       // don't unwind months in one go
+  let drained = 0;
+  for (let d=0; d<gap; d++){
+    inv.forEach(i => {
+      const cd = rateOf(i); if (cd <= 0) return;
+      const oc = oldOf(i.sku); if (oc <= 0) return;
+      const cut = Math.min(oc, cd);
+      move.oldCases[i.sku] = oc - cut; drained += cut;
+    });
+  }
+  move.day += gap;
+  move.lastDay = now;
+  note('New day detected', gap + ' day(s) elapsed — old building down ' + Math.round(drained).toLocaleString() + ' cases');
+  if (!quiet) toast(gap + (gap>1?' days':' day') + ' passed — old building depleted by '
+    + Math.round(drained).toLocaleString() + ' cases.');
+  pushCloud(false);
+  return gap;
+}
+function readMoveCfg(){
+  move.daysToFlip = Math.max(0, +$('mv-flip').value || 0);
+  move.safety     = Math.max(0, +$('mv-safety').value || 0);
+  move.assumedDos = Math.max(1, +$('mv-dos').value || 30);
+  move.palCap     = Math.max(0, +$('mv-cap').value || 0);
+  move.pegBasis   = $('mv-peg').value;
+  mergeReports(false);
+  renderMove(); pushCloud(false);
+}
+/* Forget the old highs and size the plan from where inventory stands today. */
+function rebaseline(){
+  if (!confirm('Reset the slotting baseline to today\'s on hand?\n\nThe plan will be sized from here forward instead of from the highest levels seen so far.')) return;
+  snapshot();
+  move.peakCases = {}; move.pegStamp = today();
+  inv.forEach(i => move.peakCases[i.sku] = i.cases);
+  mergeReports(false);
+  note('Re-baselined', 'plan now sized from on hand as of ' + move.pegStamp);
+  toast('Baseline reset to today.');
+}
+function setDailyRate(sku, v){
+  const n = parseFloat(v);
+  if (isNaN(n) || n < 0) delete move.rate[sku]; else move.rate[sku] = n;
+  note('Rate override', (itemBy(sku)||{}).name + ' → ' + (isNaN(n) ? 'report rate' : n + ' cs/day'));
+  renderMove(); pushCloud(false);
+}
+
+function renderMove(){
+  if (!inv.length){ $('moveBody').innerHTML = '<div class="empty">Load the sales rate report first.</div>'; return; }
+  $('mv-flip').value = move.daysToFlip; $('mv-safety').value = move.safety;
+  $('mv-dos').value = move.assumedDos;  $('mv-cap').value = move.palCap; $('mv-peg').value = move.pegBasis || 'peak';
+  $('mv-day').textContent = 'Day ' + move.day + ' of ' + move.daysToFlip
+    + (move.lastDay ? ' · counted through ' + move.lastDay : '');
+
+  const rows = movePlan();
+  const q = ($('mv-find').value||'').toLowerCase();
+  const shown = rows.filter(r => !q || r.i.name.toLowerCase().includes(q) || r.i.sku.includes(q));
+  let cap = +move.palCap || 0, spent = 0;
+
+  const totOld = rows.reduce((s,r)=>s+r.oc,0), totNew = rows.reduce((s,r)=>s+r.nc,0);
+  const canMove = rows.reduce((s,r)=>s+r.movPal,0);
+  const risk = rows.filter(r=>r.status==='AT RISK').length;
+  $('moveTotals').innerHTML =
+    tile(Math.round(totOld).toLocaleString(),'Cases in old') +
+    tile(Math.round(totNew).toLocaleString(),'Cases in new') +
+    tile(Object.values(move.placed).reduce((s,p)=>s+p.n,0),'Pallets on the map') +
+    tile(canMove,'Pallets safe to move') +
+    tile(risk,'At risk', risk>0);
+  function tile(n,l,bad){ return '<div class="stat'+(bad?' bad':'')+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'; }
+
+  let h = '<table><thead><tr><th>Pri</th><th class="l">Item</th><th class="l">ID</th>'
+    + '<th>Cs/day</th><th>Old cs</th><th>New cs</th><th>Old DOS</th><th>New DOS</th>'
+    + '<th>Keep back</th><th>Mov pal</th><th>Mov cs</th><th>On map</th><th class="l">Status</th></tr></thead><tbody>';
+  shown.forEach((r,ix) => {
+    let mp = r.movPal;
+    if (cap > 0){ const room = Math.max(0, cap - spent); mp = Math.min(mp, room); spent += mp; }
+    const cls = r.status==='MOVE' ? 'tray' : r.status==='HOLD' ? 'fourpk' : 'no';
+    h += '<tr><td>'+(ix+1)+'</td><td class="l">'+r.i.name+'</td><td class="l">'+r.i.sku+'</td>'
+      + '<td><input type="number" step="0.1" value="'+r.cd.toFixed(1)+'" style="width:62px;text-align:right;padding:2px 4px" '
+      + 'onchange="setDailyRate(\''+r.i.sku+'\',this.value)"'+(move.rate[r.i.sku]!=null?' title="overridden"':'')+'></td>'
+      + '<td>'+Math.round(r.oc).toLocaleString()+'</td><td>'+Math.round(r.nc).toLocaleString()+'</td>'
+      + '<td>'+r.oldDos.toFixed(1)+'</td><td>'+r.newDos.toFixed(1)+'</td>'
+      + '<td>'+Math.round(r.floor).toLocaleString()+'</td>'
+      + '<td>'+(mp||'')+'</td>'
+      + '<td'+(r.partial?' style="color:var(--accent)" title="loose cases, less than a full pallet"':'')+'>'
+      + (r.movCases||'')+'</td>'
+      + '<td>'+(placedPallets(r.i.sku)||'')+'/'+r.i.pallets+'</td>'
+      + '<td class="l"><span class="pill '+cls+'">'+r.status+'</span></td></tr>';
+  });
+  $('moveTable').innerHTML = h + '</tbody>';
+}
+
+function exportMovePlan(){
+  const rows = [['Priority','ItemID','Description','Format','CasesPerDay','OldCases','NewCases',
+    'OldDOS','NewDOS','KeepBackCases','MovablePallets','MovableCases','PalletsOnMap','TotalPallets','Status']];
+  movePlan().forEach((r,i) => rows.push([i+1, r.i.sku, r.i.name, FORMAT[r.i.fmt].label,
+    r.cd.toFixed(2), Math.round(r.oc), Math.round(r.nc), r.oldDos.toFixed(1), r.newDos.toFixed(1),
+    Math.round(r.floor), r.movPal, r.movCases, placedPallets(r.i.sku), r.i.pallets, r.status]));
+  dumpCsv(rows, 'gulfport_move_plan');
+}
+
+function renderLog(){
+  let h = '<thead><tr><th class="l">When</th><th class="l">Who</th><th class="l">Action</th><th class="l">Detail</th></tr></thead><tbody>';
+  log.forEach(e => {
+    h += '<tr><td class="l">' + new Date(e.t).toLocaleString() + '</td><td class="l">' + e.who
+      + '</td><td class="l">' + e.action + '</td><td class="l" style="white-space:normal">' + e.detail + '</td></tr>';
+  });
+  $('logTable').innerHTML = h + '</tbody>';
+}
+
+/* ---------- export ---------- */
+function exportCsv(){
+  if (!Object.keys(plan.slots).length){ toast('Build a plan first.'); return; }
+  const rows = [['Pass','PickSeq','Aisle','Lane','Position','Face','Slot','Role','ItemID','Description','Format','Size','CasesPerPallet','OnHandCases','CasesPerDay','Pallets','LoadPerCaseLb']];
+  const ordered = [];
+  let step = 0;
+  corridors().forEach(c => {
+    (c.sweep || c.lanes).forEach(L => {
+      const a = cfg.aisles.find(x=>x.id===L.aisle);
+      L.cells.forEach(id => {
+        const p = plan.slots[id]; if(!p) return;
+        const it = itemBy(p.sku) || {};
+        const bay = +id.split('-')[2];
+        ordered.push([c.pass, ++step, a.id, L.col, bay, L.face==='N'?'North':'South', id,
+          p.n>=2?'Backstock':'Pick face',
+          p.sku, it.name||'', it.fmt?FORMAT[it.fmt].label:'', it.size||'', it.cpp||'', it.cases||'',
+          it.daily!=null?it.daily.toFixed(2):'', it.pallets||'', it.size?loadPerCase(it.size):'']);
+      });
+    });
+  });
+  rows.push(...ordered);
+  dumpCsv(rows, 'gulfport_slot_plan');
+}
+function dumpCsv(rows, name){
+  const csv = rows.map(r => r.map(v => {
+    const s = String(v==null?'':v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+/* What is physically standing in the new building right now. */
+function exportNewBuilding(){
+  const rows = [['Slot','Aisle','Lane','Position','Face','ItemID','Description','Format',
+    'Pallets','CasesPerPallet','Cases']];
+  buildLanes().forEach(L => L.cells.forEach(id => {
+    const p = move.placed[id]; if (!p) return;
+    const it = itemBy(p.sku) || {};
+    rows.push([id, L.aisle, L.col, +id.split('-')[2], L.face==='N'?'North':'South',
+      p.sku, it.name||'', it.fmt?FORMAT[it.fmt].label:'', p.n, it.cpp||'', (it.cpp||0)*p.n]);
+  }));
+  if (rows.length === 1){ toast('Nothing has been moved in yet.'); return; }
+  dumpCsv(rows, 'gulfport_new_building');
+}
+</script>
+
+
+<script>
+/* ---------- shared sync ----------
+   The plan lives in one row. Config, the SKU master and the move record are
+   what get saved; the slot layout is recomputed from them, so two people
+   never disagree about where a pallet ought to go. */
+let sb = null, room = 'gulfport', applying = false, pushTimer = null, myRev = 0;
+
+function setSync(state, msg){
+  const d = $('syncdot'); d.className = 'dot' + (state ? ' ' + state : '');
+  $('syncmsg').textContent = msg;
+  $('syncmsg').title = state === 'live'
+    ? 'Every change is saved as you make it. There is no save button.'
+    : 'Not saving anywhere — set up Sync to share this plan.';
+}
+function fillCloud(){
+  $('sb-url').value  = CLOUD.url || store.get('rb_url') || '';
+  $('sb-key').value  = CLOUD.key || store.get('rb_key') || '';
+  $('sb-room').value = CLOUD.url ? (CLOUD.room||'gulfport') : (store.get('rb_room') || 'gulfport');
+  $('sb-who').value  = store.get('rb_who') || '';
+  /* When the project is already built into the file there is nothing here to
+     decide, so the whole setup block goes away rather than sitting there
+     greyed out. Only the name is still worth asking for. */
+  const baked = !!CLOUD.url;
+  $('sb-baked').style.display = baked ? 'block' : 'none';
+  $('sb-setup').style.display = baked ? 'none' : 'block';
+  $('sb-sql').style.display   = baked ? 'none' : 'block';
+  if (baked){
+    let host = CLOUD.url;
+    try { host = new URL(CLOUD.url).hostname.split('.')[0]; } catch(e){}
+    $('sb-where').textContent = host + ' · plan "' + (CLOUD.room || 'gulfport') + '"';
+  }
+  ['sb-url','sb-key','sb-room'].forEach(i => $(i).disabled = baked);
+}
+function connectCloud(){
+  const url = $('sb-url').value.trim(), key = $('sb-key').value.trim();
+  room = $('sb-room').value.trim() || 'gulfport';
+  const who = $('sb-who').value.trim();
+  store.set('rb_who',who);
+  if (!CLOUD.url){
+    if (!url || !key){ toast('Project URL and anon key are both needed.'); return; }
+    store.set('rb_url',url); store.set('rb_key',key); store.set('rb_room',room);
+  }
+  startCloud();
+  closeM('cloud');
+  toast(who ? 'Connected as ' + who + '.' : 'Connected.');
+}
+function startCloud(){
+  const url = CLOUD.url || store.get('rb_url');
+  const key = CLOUD.key || store.get('rb_key');
+  room = CLOUD.url ? (CLOUD.room || 'gulfport') : (store.get('rb_room') || 'gulfport');
+  if (!url || !key){ setSync('', 'Not connected'); return; }
+  if (typeof supabase === 'undefined'){ setSync('err','Sync library did not load'); return; }
+  try {
+    /* No Supabase Auth here — the publishable key plus the row policy is the
+       whole access model. Left to itself the client keeps a session in browser
+       storage and tries to refresh it on load, which picks up whatever another
+       app on this same GitHub Pages origin left behind and throws a refresh
+       token error. Turning session handling off stops it touching that at all. */
+    sb = supabase.createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+    });
+    setSync('busy','Connecting…');
+    pullCloud().then(() => {
+      setSync('live','Live · ' + room);
+      sb.channel('rb_' + room)
+        .on('postgres_changes', { event:'*', schema:'public', table:'rb_plan', filter:'id=eq.'+room },
+            p => { if (p.new && p.new.rev !== myRev) applyRemote(p.new); })
+        .subscribe();
+    }).catch(e => setSync('err', e.message || 'Could not load the plan'));
+  } catch(e){ setSync('err','Could not connect'); }
+}
+async function pullCloud(){
+  const { data, error } = await sb.from('rb_plan').select('*').eq('id', room).maybeSingle();
+  if (error) throw error;
+  if (data) applyRemote(data);
+}
+function applyRemote(rowData){
+  const pl = rowData.payload; if (!pl) return;
+  applying = true;
+  try {
+    if (pl.cfg){ const keepRank = cfg.rank; cfg = Object.assign(cfg, pl.cfg);
+                 if (!pl.cfg.rank) cfg.rank = keepRank; }
+    if (pl.cppTable){ cppTable = pl.cppTable; cppStamp = pl.cppStamp || cppStamp; }
+    if (pl.inv)  inv  = pl.inv;
+    if (pl.move) move = pl.move;
+    if (pl.pins) pins = pl.pins;
+    if (pl.log)  log  = pl.log;
+    if (pl.slots){ plan.slots = pl.slots; plan.builtOn = pl.builtOn || plan.builtOn;
+                   plan.unplaced = plan.unplaced || []; render(); }
+    else runPlan();
+    myRev = rowData.rev || 0;
+    catchUpDays(true);
+    if (rowData.updated_by && rowData.updated_by !== (store.get('rb_who')||''))
+      toast('Plan updated by ' + rowData.updated_by);
+  } finally { applying = false; }
+}
+function pushCloud(now){
+  if (!sb || applying) return;
+  clearTimeout(pushTimer);
+  const send = async () => {
+    try {
+      myRev = myRev + 1;
+      const { error } = await sb.from('rb_plan').upsert({
+        id: room,
+        payload: { cfg, inv, move, pins, cppTable, cppStamp,
+                   slots: plan.slots, builtOn: plan.builtOn, log: log.slice(0,200) },
+        rev: myRev,
+        updated_by: store.get('rb_who') || '—',
+        updated_at: new Date().toISOString()
+      });
+      if (error) setSync('err', 'Save failed'); else setSync('live','Live · ' + room);
+    } catch(e){ setSync('err','Save failed'); }
+  };
+  if (now) send(); else pushTimer = setTimeout(send, 900);
+}
+
+/* ---------- drag and drop ----------
+   The zones take a drop, and so does the window, so the daily file can just be
+   dragged onto the map without opening anything. */
+function isSheet(f){ return f && /\.(xlsx|xlsm|xls)$/i.test(f.name); }
+function takeDrop(f, handler){
+  if (!f) return;
+  if (!isSheet(f)){ toast('That is not a spreadsheet — drop the .xlsx export.'); return; }
+  handler(f);
+}
+function wireDrop(el, handler){
+  if (!el) return;
+  el.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); el.classList.add('over'); });
+  el.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); el.classList.add('over'); });
+  el.addEventListener('dragleave', e => {
+    e.stopPropagation();
+    if (!el.contains(e.relatedTarget)) el.classList.remove('over');
+  });
+  el.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation(); el.classList.remove('over');
+    takeDrop(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0], handler);
+  });
+}
+wireDrop($('d-rate'), readRate);
+wireDrop($('d-cpp'),  readCpp);
+
+let dragDepth = 0;
+function draggingFiles(e){
+  const t = e.dataTransfer && e.dataTransfer.types;
+  return t && (Array.from(t).indexOf('Files') > -1);
+}
+window.addEventListener('dragenter', e => {
+  if (!draggingFiles(e)) return;
+  dragDepth++;
+  if (!$('m-data').classList.contains('on')) $('dropveil').classList.add('on');
+});
+window.addEventListener('dragover', e => { if (draggingFiles(e)) e.preventDefault(); });
+window.addEventListener('dragleave', e => {
+  if (!draggingFiles(e)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) $('dropveil').classList.remove('on');
+});
+window.addEventListener('drop', e => {
+  e.preventDefault();
+  dragDepth = 0; $('dropveil').classList.remove('on');
+  if ($('m-data').classList.contains('on')) return;   // the zones handle it
+  takeDrop(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0], readRate);
+});
+
+/* ---------- the passcode ---------- */
+function gateNeeded(){ return !!(GATE.hash && GATE.hash.length === 64); }
+function gateOpen(){
+  if (!gateNeeded()) return true;
+  return store.get('rb_gate') === GATE.hash;     // change the code and everyone re-enters
+}
+function unlockGate(e){
+  if (e) e.preventDefault();
+  const v = ($('gateCode').value || '').trim();
+  if (codeHash(v) === GATE.hash){
+    store.set('rb_gate', GATE.hash);
+    $('gate').classList.remove('on');
+    document.body.classList.remove('locked');
+    boot();
+  } else {
+    $('gateMsg').textContent = 'Not that one.';
+    $('gateCode').value = ''; $('gateCode').focus();
+  }
+  return false;
+}
+/* Setting the passcode is an admin job, not something everyone opening the app
+   should be reading about, so it lives in the browser console rather than in a
+   panel. Press F12, Console tab, and run:
+       makeGate('whatever you want the code to be')
+   It prints the line to paste over `const GATE` near the top of index.html.
+   The passcode itself never leaves your machine — only the hash does. */
+function makeGate(code){
+  const v = String(code == null ? '' : code).trim();
+  if (v.length < 4){ console.log('Use at least four characters.'); return; }
+  const line = "const GATE = { hash: '" + codeHash(v) + "', salt: '" + GATE.salt + "' };";
+  console.log('%cPaste this over the const GATE line in index.html:', 'font-weight:bold');
+  console.log(line);
+  return line;
+}
+
+/* ---------- start ---------- */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.back.on').forEach(m => m.classList.remove('on'));
+});
+document.querySelectorAll('.back').forEach(b => {
+  b.addEventListener('click', e => { if (e.target === b) b.classList.remove('on'); });
+});
+function boot(){
+  $('brandsub').textContent = 'Warehouse 6 · Red Bull · ' + BUILD;
+  render();
+  startCloud();
+}
+if (gateNeeded() && !gateOpen()){
+  document.body.classList.add('locked');
+  $('gate').classList.add('on');
+  setTimeout(() => $('gateCode').focus(), 60);
+} else {
+  boot();
+}
+</script>
+
+</body>
+</html>
